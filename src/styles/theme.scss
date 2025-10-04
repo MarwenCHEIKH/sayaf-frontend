@@ -1,0 +1,67 @@
+@use "sass:color";
+/* src/styles/themes.scss */
+
+/* ================================
+   Color Variables
+   ================================ */
+
+/* Primary brand colors */
+$primary-color: #2c3e50; // dark blue-gray
+$secondary-color: #ff5722; // vibrant  orange
+$accent-color: #1abc9c; // turquoise/teal
+
+/* Neutral palette */
+$background-color: #ecf0f1; // light gray background
+$text-color: #2c3e50; // main text color
+
+/* Semantic colors */
+$success-color: #27ae60; // green
+$warning-color: #f39c12; // yellow/orange
+$error-color: #c0392b; // red
+
+/* ================================
+   Typography
+   ================================ */
+$font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+$font-size-base: 16px;
+$line-height-base: 1.5;
+
+/* ================================
+   Shared Utility Classes
+   ================================ */
+body {
+  font-family: $font-family;
+  font-size: $font-size-base;
+  line-height: $line-height-base;
+  color: $text-color;
+  background-color: $background-color;
+  margin: 0;
+  padding: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600;
+  color: $primary-color;
+}
+
+a {
+  color: $secondary-color;
+  text-decoration: none;
+
+  &:hover {
+    color: color.adjust($secondary-color, $lightness: -10%);
+  }
+}
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: $background-color;
+  font-family: $font-family;
+}
