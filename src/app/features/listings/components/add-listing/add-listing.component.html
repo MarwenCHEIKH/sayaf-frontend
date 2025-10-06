@@ -1,0 +1,79 @@
+<div class="add-listing">
+  <div class="add-listing-container">
+    <h2>Add Listing</h2>
+    <form (ngSubmit)="onSubmit()">
+      <input
+        type="text"
+        [(ngModel)]="name"
+        name="name"
+        placeholder="Name"
+        required
+      />
+
+      <select [(ngModel)]="type" name="type" required>
+        <option value="hotel">Hotel</option>
+        <option value="café">Café</option>
+        <option value="experience">Experience</option>
+      </select>
+
+      <input
+        type="text"
+        [(ngModel)]="location"
+        name="location"
+        placeholder="Location"
+        required
+      />
+      <input
+        type="number"
+        [(ngModel)]="latitude"
+        name="latitude"
+        placeholder="Latitude"
+      />
+      <input
+        type="number"
+        [(ngModel)]="longitude"
+        name="longitude"
+        placeholder="Longitude"
+      />
+      <input
+        type="number"
+        [(ngModel)]="price"
+        name="price"
+        placeholder="Price"
+        required
+      />
+
+      <div class="list-input">
+        <input
+          type="text"
+          [(ngModel)]="newImage"
+          name="newImage"
+          placeholder="Image URL"
+        />
+        <button type="button" (click)="addImage()">Add</button>
+      </div>
+      <ul class="list-preview">
+        <li *ngFor="let img of images; let i = index">
+          {{ img }} <span (click)="removeImage(i)">×</span>
+        </li>
+      </ul>
+
+      <div class="list-input">
+        <input
+          type="text"
+          [(ngModel)]="newAvailability"
+          name="newAvailability"
+          placeholder="Availability"
+        />
+        <button type="button" (click)="addAvailability()">Add</button>
+      </div>
+      <ul class="list-preview">
+        <li *ngFor="let slot of availability; let i = index">
+          {{ slot }} <span (click)="removeAvailability(i)">×</span>
+        </li>
+      </ul>
+
+      <button type="submit">Create Listing</button>
+    </form>
+  </div>
+</div>

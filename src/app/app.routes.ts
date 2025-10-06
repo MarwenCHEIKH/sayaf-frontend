@@ -1,23 +1,58 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './pages/auth/login/login.component';
 import { RegisterComponent } from './pages/auth/register/register.component';
-import { authGuard } from './core/guards/auth.guard';
+import {
+  adminGuard,
+  authGuard,
+  roleGuard,
+} from './core/auth/guards/auth.guard';
 import { HomeComponent } from './pages/home/home.component';
 
 export const routes: Routes = [
   {
     path: '',
-    component: HomeComponent,
-    data: { prerender: true }, // public landing page
-  },
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
-  // protected routes
-  {
-    path: 'dashboard',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/home/home.component').then((m) => m.HomeComponent),
   },
-  { path: '**', redirectTo: '' }, // fallback
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./pages/auth/login/login.component').then(
+        (m) => m.LoginComponent
+      ),
+  },
+  {
+    path: 'register',
+    loadComponent: () =>
+      import('./pages/auth/register/register.component').then(
+        (m) => m.RegisterComponent
+      ),
+  },
+  {
+    path: 'auth/callback',
+    loadComponent: () =>
+      import('./core/auth/oauth-callback/oauth-callback.component').then(
+        (m) => m.OAuthCallbackComponent
+      ),
+  },
+
+  // ADMIN ONLY - Dashboard
+  {
+    path: 'dashboard',
+    canActivate: [adminGuard],
+    loadComponent: () =>
+      import('./features/dashboard/dashboard.component').then(
+        (m) => m.DashboardComponent
+      ),
+  },
+
+  // USER ONLY - Add Listing (regular users, not admins)
+  {
+    path: 'add-listing',
+    canActivate: [roleGuard(['user'])], // Only users with role 'user'
+    loadComponent: () =>
+      import(
+        './features/listings/components/add-listing/add-listing.component'
+      ).then((m) => m.AddListingComponent),
+  },
 ];

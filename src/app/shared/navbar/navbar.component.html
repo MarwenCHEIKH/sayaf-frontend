@@ -1,14 +1,91 @@
 <nav class="navbar">
   <div class="navbar-container">
+    <!-- Logo -->
     <a class="logo" routerLink="/">
       <span class="logo-text">Sayaf<span class="dot">.tn</span></span>
     </a>
 
+    <!-- Navigation Links -->
     <ul class="nav-links">
-      <li><a routerLink="/">Home</a></li>
-      <li><a routerLink="/listings">Discover</a></li>
-      <li><a routerLink="/login">Login</a></li>
-      <li><a routerLink="/register" class="btn-primary">Sign Up</a></li>
+      <!-- Public Links -->
+      <li>
+        <a
+          routerLink="/"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          >Home</a
+        >
+      </li>
+      <li><a routerLink="/listings" routerLinkActive="active">Discover</a></li>
+
+      <!-- Guest Links -->
+      <ng-container *ngIf="!authService.isAuthenticated()">
+        <li><a routerLink="/login" routerLinkActive="active">Login</a></li>
+        <li>
+          <a
+            routerLink="/register"
+            routerLinkActive="active"
+            class="btn-primary"
+            >Sign Up</a
+          >
+        </li>
+      </ng-container>
+
+      <!-- Authenticated User Links -->
+      <ng-container *ngIf="authService.isAuthenticated()">
+        <!-- USER ONLY -->
+        <li>
+          <a
+            *appHasRole="'user'"
+            routerLink="/add-listing"
+            routerLinkActive="active"
+          >
+            📝 Add Listing
+          </a>
+        </li>
+
+        <!-- Both USER & ADMIN -->
+        <li>
+          <a routerLink="/my-listings" routerLinkActive="active">My Listings</a>
+        </li>
+
+        <!-- ADMIN ONLY -->
+        <li>
+          <a
+            *appHasRole="'admin'"
+            routerLink="/dashboard"
+            routerLinkActive="active"
+          >
+            🛠️ Admin Dashboard
+          </a>
+        </li>
+
+        <!-- ADMIN Dropdown -->
+        <li *appHasRole="'admin'" class="dropdown">
+          <button class="nav-link dropdown-toggle">Admin ▼</button>
+          <ul class="dropdown-menu">
+            <li>
+              <a routerLink="/admin/manage-listings">Manage All Listings</a>
+            </li>
+            <li>
+              <a routerLink="/admin/verify-businesses">Verify Businesses</a>
+            </li>
+            <li><a routerLink="/admin/users">Manage Users</a></li>
+          </ul>
+        </li>
+
+        <!-- Profile Link -->
+        <li><a routerLink="/profile" routerLinkActive="active">Profile</a></li>
+      </ng-container>
     </ul>
+
+    <!-- User Info & Logout -->
+    <div *ngIf="authService.isAuthenticated()" class="nav-user">
+      <span class="user-email">{{ currentUser?.email }}</span>
+      <span class="user-role" [class.role-admin]="authService.isAdmin()">
+        {{ authService.isAdmin() ? "Admin" : "User" }}
+      </span>
+      <button (click)="logout()" class="btn-logout">Logout</button>
+    </div>
   </div>
 </nav>
