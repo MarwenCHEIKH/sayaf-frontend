@@ -27,7 +27,7 @@ export class LoginComponent {
     this.auth.login(this.email, this.password).subscribe({
       next: (res) => {
         localStorage.setItem('token', res.access_token);
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/']);
       },
       error: (err) =>
         alert('Login failed: ' + (err.error?.message || err.message)),

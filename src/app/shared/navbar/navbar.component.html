@@ -1,91 +1,179 @@
 <nav class="navbar">
   <div class="navbar-container">
     <!-- Logo -->
-    <a class="logo" routerLink="/">
+    <a class="logo" routerLink="/" aria-label="Sayaf.tn Home">
       <span class="logo-text">Sayaf<span class="dot">.tn</span></span>
     </a>
 
+    <!-- Mobile Menu Toggle -->
+    <button
+      class="mobile-menu-toggle"
+      (click)="toggleMobileMenu()"
+      [class.active]="isMobileMenuOpen"
+      aria-label="Toggle navigation menu"
+      [attr.aria-expanded]="isMobileMenuOpen"
+    >
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+    </button>
+
     <!-- Navigation Links -->
-    <ul class="nav-links">
+    <ul class="nav-links" [class.mobile-open]="isMobileMenuOpen">
       <!-- Public Links -->
-      <li>
+      <li class="nav-item">
         <a
           routerLink="/"
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: true }"
-          >Home</a
+          (click)="closeMobileMenu()"
         >
+          <span class="nav-icon">🏠</span>
+          <span>Home</span>
+        </a>
       </li>
-      <li><a routerLink="/listings" routerLinkActive="active">Discover</a></li>
+      <li class="nav-item">
+        <a
+          routerLink="/listings"
+          routerLinkActive="active"
+          (click)="closeMobileMenu()"
+        >
+          <span class="nav-icon">🔍</span>
+          <span>Discover</span>
+        </a>
+      </li>
 
       <!-- Guest Links -->
       <ng-container *ngIf="!authService.isAuthenticated()">
-        <li><a routerLink="/login" routerLinkActive="active">Login</a></li>
-        <li>
+        <li class="nav-item mobile-divider"></li>
+        <li class="nav-item">
+          <a
+            routerLink="/login"
+            routerLinkActive="active"
+            (click)="closeMobileMenu()"
+          >
+            Login
+          </a>
+        </li>
+        <li class="nav-item">
           <a
             routerLink="/register"
             routerLinkActive="active"
             class="btn-primary"
-            >Sign Up</a
+            (click)="closeMobileMenu()"
           >
+            Sign Up
+          </a>
         </li>
       </ng-container>
 
       <!-- Authenticated User Links -->
       <ng-container *ngIf="authService.isAuthenticated()">
+        <li class="nav-item mobile-divider"></li>
+
         <!-- USER ONLY -->
-        <li>
+        <li class="nav-item">
           <a
-            *appHasRole="'user'"
             routerLink="/add-listing"
             routerLinkActive="active"
+            class="nav-highlight"
+            (click)="closeMobileMenu()"
           >
-            📝 Add Listing
+            <span class="nav-icon">📝</span>
+            <span>Add Listing</span>
           </a>
         </li>
 
         <!-- Both USER & ADMIN -->
-        <li>
-          <a routerLink="/my-listings" routerLinkActive="active">My Listings</a>
+        <li class="nav-item">
+          <a
+            routerLink="/my-listings"
+            routerLinkActive="active"
+            (click)="closeMobileMenu()"
+          >
+            <span class="nav-icon">📋</span>
+            <span>My Listings</span>
+          </a>
         </li>
 
         <!-- ADMIN ONLY -->
-        <li>
+        <li class="nav-item" *appHasRole="'admin'">
           <a
-            *appHasRole="'admin'"
             routerLink="/dashboard"
             routerLinkActive="active"
+            (click)="closeMobileMenu()"
           >
-            🛠️ Admin Dashboard
+            <span class="nav-icon">🛠️</span>
+            <span>Dashboard</span>
           </a>
         </li>
 
         <!-- ADMIN Dropdown -->
-        <li *appHasRole="'admin'" class="dropdown">
-          <button class="nav-link dropdown-toggle">Admin ▼</button>
-          <ul class="dropdown-menu">
+        <li *appHasRole="'admin'" class="nav-item dropdown">
+          <button
+            class="nav-link dropdown-toggle"
+            (click)="toggleDropdown()"
+            [class.active]="isDropdownOpen"
+            aria-haspopup="true"
+            [attr.aria-expanded]="isDropdownOpen"
+          >
+            <span class="nav-icon">⚙️</span>
+            <span>Admin</span>
+            <span class="dropdown-arrow">▼</span>
+          </button>
+          <ul class="dropdown-menu" [class.show]="isDropdownOpen">
             <li>
-              <a routerLink="/admin/manage-listings">Manage All Listings</a>
+              <a
+                routerLink="/admin/manage-listings"
+                (click)="closeDropdown(); closeMobileMenu()"
+              >
+                <span class="dropdown-icon">📊</span>
+                Manage Listings
+              </a>
             </li>
             <li>
-              <a routerLink="/admin/verify-businesses">Verify Businesses</a>
+              <a
+                routerLink="/admin/verify-businesses"
+                (click)="closeDropdown(); closeMobileMenu()"
+              >
+                <span class="dropdown-icon">✅</span>
+                Verify Businesses
+              </a>
             </li>
-            <li><a routerLink="/admin/users">Manage Users</a></li>
+            <li>
+              <a
+                routerLink="/admin/users"
+                (click)="closeDropdown(); closeMobileMenu()"
+              >
+                <span class="dropdown-icon">👥</span>
+                Manage Users
+              </a>
+            </li>
           </ul>
         </li>
 
         <!-- Profile Link -->
-        <li><a routerLink="/profile" routerLinkActive="active">Profile</a></li>
+        <li class="nav-item">
+          <a
+            routerLink="/profile"
+            routerLinkActive="active"
+            (click)="closeMobileMenu()"
+          >
+            <span class="nav-icon">👤</span>
+            <span>Profile</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a
+            (click)="logout(); closeMobileMenu()"
+            routerLink="/login"
+            routerLinkActive="active"
+          >
+            <span class="logout-icon">🚪</span>
+            <span>Logout</span>
+          </a>
+        </li>
       </ng-container>
     </ul>
-
-    <!-- User Info & Logout -->
-    <div *ngIf="authService.isAuthenticated()" class="nav-user">
-      <span class="user-email">{{ currentUser?.email }}</span>
-      <span class="user-role" [class.role-admin]="authService.isAdmin()">
-        {{ authService.isAdmin() ? "Admin" : "User" }}
-      </span>
-      <button (click)="logout()" class="btn-logout">Logout</button>
-    </div>
   </div>
 </nav>
