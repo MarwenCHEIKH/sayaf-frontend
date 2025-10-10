@@ -1,9 +1,8 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/auth/services/auth.service';
-import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-register',
@@ -18,12 +17,16 @@ export class RegisterComponent {
   password = '';
   private auth = inject(AuthService);
   private router = inject(Router);
+  private platformId = inject(PLATFORM_ID);
+  private isBrowser = isPlatformBrowser(this.platformId);
 
   onRegister() {
     this.auth.register(this.name, this.email, this.password).subscribe({
-      next: () => this.router.navigate(['/login']),
+      next: () => {
+        if (this.isBrowser) this.router.navigate(['/login']);
+      },
       error: (err) =>
-        alert('Registration failed: ' + err.error?.message || err.message),
+        alert('Registration failed: ' + (err.error?.message || err.message)),
     });
   }
 }

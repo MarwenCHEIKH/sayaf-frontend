@@ -1,0 +1,273 @@
+<!-- src/app/components/listings/listings.component.html -->
+<div class="listings-container">
+  <!-- Header Section -->
+  <div class="listings-header">
+    <h1 class="listings-title">Discover Places</h1>
+    <p class="listings-subtitle">
+      Find the best restaurants, hotels, and attractions
+    </p>
+  </div>
+
+  <!-- Search and Filter Section -->
+  <div class="search-filter-section">
+    <div class="search-wrapper">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by name, type, or location..."
+        [value]="searchQuery"
+        (input)="onSearchInput($any($event.target).value)"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+
+    <!-- Filter Controls -->
+    <div class="filter-controls">
+      <button class="filter-toggle-btn" (click)="showFilters = !showFilters">
+        <span>Filters</span>
+        <span class="filter-icon">{{ showFilters ? "▲" : "▼" }}</span>
+      </button>
+
+      <!-- Sort Options -->
+      <div class="sort-controls">
+        <label for="sort-by">Sort by:</label>
+        <select
+          id="sort-by"
+          class="sort-select"
+          [value]="sortBy"
+          (change)="onSortChange($any($event.target).value, sortOrder)"
+        >
+          <option value="reviewScore">Review Score</option>
+          <option value="rating">Rating</option>
+          <option value="price">Price</option>
+        </select>
+        <button
+          class="sort-order-btn"
+          (click)="onSortChange(sortBy, sortOrder === 'desc' ? 'asc' : 'desc')"
+          [title]="sortOrder === 'desc' ? 'Descending' : 'Ascending'"
+        >
+          {{ sortOrder === "desc" ? "↓" : "↑" }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Type Filters (Expandable) -->
+    <div class="type-filters" *ngIf="showFilters">
+      <div class="filters-header">
+        <h3>Filters</h3>
+        <button
+          class="clear-filters-btn"
+          (click)="clearFilters()"
+          *ngIf="selectedTypes.length > 0 || searchQuery || minReviewScore > 0"
+        >
+          Clear All
+        </button>
+      </div>
+
+      <!-- Review Score Filter -->
+      <div class="review-score-filter">
+        <div class="filter-section-header">
+          <h4>Minimum Review Score</h4>
+          <span class="score-badge">{{
+            formatReviewScore(minReviewScore)
+          }}</span>
+        </div>
+        <div class="slider-container">
+          <input
+            type="range"
+            class="score-slider"
+            [min]="0"
+            [max]="getMaxReviewScore()"
+            [step]="0.1"
+            [value]="minReviewScore"
+            (input)="onReviewScoreChange(+$any($event.target).value)"
+          />
+          <div class="slider-labels">
+            <span>0</span>
+            <span>{{ getMaxReviewScore() }}</span>
+          </div>
+        </div>
+        <p class="filter-hint">
+          Review score combines rating quality with review count
+        </p>
+      </div>
+
+      <!-- Type Filters -->
+      <div class="type-filter-section">
+        <h4>Filter by Type</h4>
+        <div class="type-chips">
+          <button
+            *ngFor="let type of availableTypes"
+            class="type-chip"
+            [class.active]="selectedTypes.includes(type)"
+            (click)="toggleTypeFilter(type)"
+          >
+            {{ type }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading listings...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="error && !loading">
+    <div class="error-icon">⚠️</div>
+    <p class="error-message">{{ error }}</p>
+    <button class="retry-btn" (click)="loadListings()">Retry</button>
+  </div>
+
+  <!-- Listings Grid -->
+  <div class="listings-grid" *ngIf="!loading && !error">
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="displayedListings.length === 0">
+      <div class="empty-icon">🔍</div>
+      <h3>No listings found</h3>
+      <p>Try adjusting your filters or search query</p>
+      <button class="clear-btn" (click)="clearFilters()">Clear Filters</button>
+    </div>
+
+    <!-- Listing Cards -->
+    <div
+      class="listing-card"
+      *ngFor="let listing of displayedListings; trackBy: trackByListingId"
+    >
+      <!-- Image Carousel Container -->
+      <div class="card-image-container">
+        <img
+          [src]="getCurrentPhoto(listing)"
+          [alt]="listing.name"
+          class="card-image"
+          (error)="onImageError($event)"
+        />
+
+        <!-- Carousel Navigation -->
+        <div class="carousel-controls" *ngIf="hasMultipleImages(listing)">
+          <button
+            class="carousel-btn prev"
+            (click)="previousImage(listing, $event)"
+            aria-label="Previous image"
+          >
+            ‹
+          </button>
+          <button
+            class="carousel-btn next"
+            (click)="nextImage(listing, $event)"
+            aria-label="Next image"
+          >
+            ›
+          </button>
+        </div>
+
+        <!-- Image Indicators -->
+        <div class="carousel-indicators" *ngIf="hasMultipleImages(listing)">
+          <span
+            *ngFor="let photo of getPhotos(listing); let i = index"
+            class="indicator"
+            [class.active]="i === getCurrentImageIndex(listing)"
+            (click)="goToImage(listing, i, $event)"
+          ></span>
+        </div>
+
+        <!-- Image Counter -->
+        <div class="image-counter" *ngIf="hasMultipleImages(listing)">
+          {{ getCurrentImageIndex(listing) + 1 }} /
+          {{ getPhotos(listing).length }}
+        </div>
+
+        <div class="card-overlay">
+          <span class="card-type-badge">{{ listing.type[0] }}</span>
+          <!-- Review Score Badge -->
+          <span
+            class="review-score-badge"
+            *ngIf="listing.rating && listing.user_ratings_total"
+          >
+          </span>
+        </div>
+      </div>
+
+      <!-- Card Content -->
+      <div class="card-content">
+        <h3 class="card-title">{{ listing.name }}</h3>
+
+        <!-- Rating with Review Score -->
+        <div class="card-rating" *ngIf="listing.rating">
+          <div class="stars">
+            <span
+              *ngFor="let star of getStarRating(listing.rating); let i = index"
+              class="star"
+              [class.filled]="star"
+            >
+              ★
+            </span>
+          </div>
+          <span class="rating-number">{{
+            (listing.rating ? +listing.rating : 0).toFixed(1)
+          }}</span>
+          <span class="rating-count">({{ listing.user_ratings_total }})</span>
+        </div>
+
+        <!-- Location -->
+        <div
+          class="card-location"
+          *ngIf="listing.vicinity || listing.formatted_address"
+        >
+          <span class="location-icon">📍</span>
+          <span class="location-text">{{
+            listing.vicinity || listing.formatted_address
+          }}</span>
+        </div>
+
+        <!-- Types -->
+        <div class="card-types">
+          <span class="type-tag" *ngFor="let type of listing.type.slice(0, 3)">
+            {{ type }}
+          </span>
+          <span class="type-tag more" *ngIf="listing.type.length > 3">
+            +{{ listing.type.length - 3 }}
+          </span>
+        </div>
+
+        <!-- Price -->
+        <div class="card-price" *ngIf="listing.price">
+          <span class="price-label">Price:</span>
+          <span class="price-value">{{ formatPrice(listing.price) }}</span>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="card-footer">
+          <button
+            class="card-btn primary"
+            [routerLink]="['/listing', listing.id]"
+          >
+            View Details
+          </button>
+          <button class="card-btn secondary" *ngIf="listing.website">
+            <a [href]="listing.website" target="_blank" rel="noopener">
+              Website
+            </a>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load More Indicator -->
+  <div class="load-more-container" *ngIf="loadingMore">
+    <div class="spinner small"></div>
+    <p>Loading more...</p>
+  </div>
+
+  <!-- End of Results -->
+  <div
+    class="end-message"
+    *ngIf="!hasMoreItems && displayedListings.length > 0"
+  >
+    <p>You've reached the end of the listings</p>
+  </div>
+</div>

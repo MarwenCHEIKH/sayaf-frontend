@@ -1,6 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { isPlatformBrowser } from '@angular/common';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-oauth-callback',
@@ -20,11 +22,18 @@ export class OAuthCallbackComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private authService = inject(AuthService);
+  private platformId = inject(PLATFORM_ID);
 
   message = 'Processing authentication...';
 
   ngOnInit() {
-    this.route.queryParams.subscribe((params) => {
+    // Only run browser-dependent code in browser
+    if (!isPlatformBrowser(this.platformId)) {
+      this.message = 'Preparing authentication...';
+      return;
+    }
+
+    this.route.queryParams.pipe(take(1)).subscribe((params) => {
       const token = params['token'];
       const provider = params['provider'];
       const error = params['error'];
@@ -46,10 +55,10 @@ export class OAuthCallbackComponent implements OnInit {
 
       if (token) {
         try {
-          // Store token and initialize user
+          // AuthService should be SSR-safe internally
           this.authService.handleOAuthCallback(token, provider);
 
-          // Handle different scenarios
+          // Handle post-login scenarios
           if (needsProfileCompletion) {
             this.message = 'Please complete your profile...';
             setTimeout(() => {
@@ -65,7 +74,7 @@ export class OAuthCallbackComponent implements OnInit {
           } else if (isNewUser) {
             this.message = 'Welcome! Setting up your account...';
             setTimeout(() => {
-              this.router.navigate(['/welcome']);
+              this.router.navigate(['']); // changed from /welcome
             }, 1500);
           } else {
             this.message = 'Login successful! Redirecting...';
@@ -73,8 +82,8 @@ export class OAuthCallbackComponent implements OnInit {
               this.router.navigate(['/']);
             }, 1500);
           }
-        } catch (error) {
-          console.error('Error processing OAuth callback:', error);
+        } catch (err) {
+          console.error('Error processing OAuth callback:', err);
           this.router.navigate(['/login'], {
             queryParams: { error: 'token_invalid' },
           });

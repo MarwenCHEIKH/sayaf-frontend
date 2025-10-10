@@ -51,8 +51,16 @@ export const routes: Routes = [
     path: 'add-listing',
     canActivate: [roleGuard(['user'])], // Only users with role 'user'
     loadComponent: () =>
-      import(
-        './features/listings/components/add-listing/add-listing.component'
-      ).then((m) => m.AddListingComponent),
+      import('./features/add-listing/add-listing.component').then(
+        (m) => m.AddListingComponent
+      ),
+  },
+  //display listings
+  {
+    path: 'listings',
+    loadComponent: () =>
+      import('./features/listings/listings.component').then(
+        (m) => m.ListingsComponent
+      ),
   },
 ];
