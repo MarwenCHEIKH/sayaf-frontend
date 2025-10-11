@@ -1,8 +1,14 @@
 import { Component, HostListener, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterModule } from '@angular/router';
+import {
+  Router,
+  NavigationEnd,
+  RouterLink,
+  RouterLinkActive,
+} from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/auth/services/auth.service';
 import { HasRoleDirective } from '../../directives/has-role.directive';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-navbar',
@@ -13,21 +19,28 @@ import { HasRoleDirective } from '../../directives/has-role.directive';
 })
 export class Navbar {
   authService = inject(AuthService);
+  router = inject(Router);
+
   isMobileMenuOpen = false;
   isDropdownOpen = false;
+  isHomePage = false; // 👈 new flag for dynamic style
+
+  constructor() {
+    // Listen to route changes and update navbar style
+    this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe((event) => {
+        this.isHomePage = event.urlAfterRedirects === '/';
+      });
+  }
 
   get currentUser() {
     return this.authService.getCurrentUser();
   }
+
   toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
-
-    // Prevent body scroll when menu is open
-    if (this.isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = this.isMobileMenuOpen ? 'hidden' : '';
   }
 
   closeMobileMenu(): void {
@@ -43,7 +56,6 @@ export class Navbar {
     this.isDropdownOpen = false;
   }
 
-  // Close dropdown when clicking outside
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
@@ -54,13 +66,13 @@ export class Navbar {
     }
   }
 
-  // Close mobile menu on window resize
   @HostListener('window:resize', ['$event'])
   onResize(): void {
     if (window.innerWidth > 968 && this.isMobileMenuOpen) {
       this.closeMobileMenu();
     }
   }
+
   logout() {
     this.authService.logout();
   }

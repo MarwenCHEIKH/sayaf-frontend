@@ -112,4 +112,20 @@ export class ListingService {
     console.error(errorMessage);
     return throwError(() => new Error(errorMessage));
   }
+
+  getTopListings(limit: number = 3): Observable<ListingWithPhotos[]> {
+    return this.getListings().pipe(
+      map((listings) => {
+        const scored = listings.map((l) => ({
+          ...l,
+          score: (l.rating || 0) * Math.log(1 + (l.user_ratings_total || 0)),
+        }));
+
+        const sorted = scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+        return sorted.slice(0, limit);
+      }),
+      tap((top) => console.log('🌟 Top listings (featured):', top))
+    );
+  }
 }

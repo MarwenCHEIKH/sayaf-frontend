@@ -10,71 +10,159 @@
     poster="../../../assets/images/poster.jpg"
   >
     <source data-src="../../../assets/videos/background.mp4" type="video/mp4" />
-    Your browser does not support the video tag.</video
-  >>
+    Your browser does not support the video tag.
+  </video>
+
   <div class="hero-content">
-    <h1>Find Your Perfect Stay</h1>
-    <p>Book hotels, cafés, and experiences in seconds</p>
-    <form class="search-bar">
-      <input type="text" placeholder="Where are you going?" />
-      <input type="date" />
-      <input type="date" />
-      <button type="submit">Search</button>
+    <h1>Discover the Soul of Tunisia</h1>
+    <p>
+      Authentic experiences, hidden gems, and local favorites across the country
+    </p>
+    <form class="search-bar" (submit)="onSearch($event)">
+      <input
+        type="text"
+        placeholder="Search cafés, beaches, restaurants..."
+        aria-label="Search locations"
+      />
+      <a routerLink="/listings" class="btn">Explore</a>
     </form>
   </div>
 </section>
 
-<!-- Features -->
-<section class="features">
-  <h2>Why Choose Us</h2>
-  <div class="feature-grid">
-    <div class="feature">
-      <h3>Best Prices</h3>
-      <p>We compare thousands of listings to get you the best deals.</p>
+<!-- Categories Section -->
+<section class="categories">
+  <h2>What Are You Looking For?</h2>
+  <p class="subtitle">Explore Tunisia through authentic local experiences</p>
+
+  <div class="category-grid">
+    <div class="category-card" (click)="navigateToCategory('restaurants')">
+      <div class="icon">🍽️</div>
+      <h3>Traditional Restaurants</h3>
+      <p>
+        Discover authentic Tunisian cuisine from family-run restaurants to
+        modern takes on classics
+      </p>
     </div>
-    <div class="feature">
-      <h3>Instant Booking</h3>
-      <p>Book instantly with confirmation emails sent right away.</p>
+
+    <div class="category-card" (click)="navigateToCategory('cafes')">
+      <div class="icon">☕</div>
+      <h3>Cafés & Coffee Shops</h3>
+      <p>
+        From historic French cafés to modern specialty coffee, find your perfect
+        spot
+      </p>
     </div>
-    <div class="feature">
-      <h3>Trusted Reviews</h3>
-      <p>Read honest reviews from other travelers before you book.</p>
+
+    <div class="category-card" (click)="navigateToCategory('beaches')">
+      <div class="icon">🏖️</div>
+      <h3>Beaches & Coast</h3>
+      <p>
+        Mediterranean paradise — discover pristine beaches and coastal escapes
+      </p>
+    </div>
+
+    <div class="category-card" (click)="navigateToCategory('culture')">
+      <div class="icon">🕌</div>
+      <h3>Cultural Sites</h3>
+      <p>Ancient medinas, historical landmarks, and architectural wonders</p>
+    </div>
+
+    <div class="category-card" (click)="navigateToCategory('coworking')">
+      <div class="icon">💻</div>
+      <h3>Co-working Spaces</h3>
+      <p>Modern workspaces for digital nomads and local entrepreneurs</p>
+    </div>
+
+    <div class="category-card" (click)="navigateToCategory('nightlife')">
+      <div class="icon">🎵</div>
+      <h3>Bars & Nightlife</h3>
+      <p>Live music venues, rooftop bars, and local hangout spots</p>
     </div>
   </div>
 </section>
 
-<!-- Listings -->
-<section class="listings">
-  <h2>Popular Destinations</h2>
-  <div class="card-grid">
-    <div class="card">
-      <img src="hotel1.jpg" alt="Hotel" />
-      <div class="card-body">
-        <h3>Seaside Resort</h3>
-        <p>Beautiful views with pool & spa</p>
-        <span class="price">$120/night</span>
+<!-- Featured Places -->
+
+<section class="featured-places">
+  <h2>Featured Places</h2>
+  <p class="subtitle">Handpicked favorites from locals and travelers</p>
+
+  <div *ngIf="featuredListings.length; else loading" class="places-grid">
+    <div
+      class="place-card"
+      *ngFor="let place of featuredListings"
+      (click)="navigateToPlace(place.id)"
+    >
+      <img
+        [src]="place.photoUrls?.[0] || '../../../assets/images/placeholder.jpg'"
+        [alt]="place.name"
+        class="place-image"
+      />
+
+      <div class="place-body">
+        <span class="place-badge">
+          {{ place.type?.[0] || 'Place' }}
+        </span>
+
+        <h3>{{ place.name }}</h3>
+
+        <div class="location">
+          <span>📍</span>
+          <span>{{
+            place.vicinity || place.formatted_address || "Tunisia"
+          }}</span>
+        </div>
+
+        <p>
+          {{
+            place.formatted_address ||
+              "Discover this beautiful place in Tunisia."
+          }}
+        </p>
+
+        <div class="place-meta">
+          <span class="rating">⭐ {{ place.rating || "N/A" }}</span>
+          <span class="reviews"
+            >({{ place.user_ratings_total || 0 }} reviews)</span
+          >
+        </div>
       </div>
     </div>
-    <div class="card">
-      <img src="hotel2.jpg" alt="Hotel" />
-      <div class="card-body">
-        <h3>City Apartment</h3>
-        <p>Perfect for business and leisure</p>
-        <span class="price">$90/night</span>
-      </div>
+  </div>
+
+  <ng-template #loading>
+    <div class="loading">
+      <p>Loading featured places...</p>
     </div>
-    <div class="card">
-      <img src="hotel3.jpg" alt="Hotel" />
-      <div class="card-body">
-        <h3>Cozy Café Loft</h3>
-        <p>Stay above a lively café in town</p>
-        <span class="price">$75/night</span>
-      </div>
+  </ng-template>
+</section>
+
+<!-- Why Explore Section -->
+<section class="why-explore">
+  <h2>Why Tunisia Hub?</h2>
+
+  <div class="features-grid">
+    <div class="feature-item">
+      <div class="feature-icon">🗺️</div>
+      <h3>Local Insights</h3>
+      <p>Curated recommendations from Tunisians who know the country best</p>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-icon">✨</div>
+      <h3>Hidden Gems</h3>
+      <p>Discover places tourists miss — authentic spots loved by locals</p>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-icon">🌍</div>
+      <h3>Beyond Guidebooks</h3>
+      <p>Real experiences, honest reviews, and constantly updated info</p>
     </div>
   </div>
 </section>
 
 <!-- Footer -->
 <footer>
-  <p>&copy; 2025 MyBookingSite. All rights reserved.</p>
+  <p>&copy; 2025 Tunisia Hub. Discover. Explore. Experience.</p>
 </footer>

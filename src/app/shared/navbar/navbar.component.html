@@ -1,4 +1,4 @@
-<nav class="navbar">
+<nav class="navbar" [class.transparent-navbar]="isHomePage">
   <div class="navbar-container">
     <!-- Logo -->
     <a class="logo" routerLink="/" aria-label="Sayaf.tn Home">
@@ -30,7 +30,9 @@
           stroke-linejoin="round"
         />
       </svg>
-      <span class="logo-text">Sayaf<span class="logo-suffix">.tn</span></span>
+      <span class="logo-text"
+        >TunisiaHub<span class="logo-suffix">.tn</span></span
+      >
     </a>
 
     <!-- Search Bar (Desktop) -->
