@@ -1,4 +1,11 @@
-import { Component, HostListener, inject } from '@angular/core';
+// src/app/components/navbar/navbar.component.ts
+import {
+  Component,
+  HostListener,
+  inject,
+  OnInit,
+  OnDestroy,
+} from '@angular/core';
 import {
   Router,
   NavigationEnd,
@@ -6,32 +13,64 @@ import {
   RouterLinkActive,
 } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from '../../core/auth/services/auth.service';
-import { HasRoleDirective } from '../../directives/has-role.directive';
+import { HasRoleDirective } from '../../directives/hasRole/has-role.directive';
+import { LanguageSwitcherComponent } from '../../core/i18n/components/language-switcher/language-switcher.component';
+import { Store } from '@ngrx/store';
+import { selectCurrentLanguage } from '../../core/i18n/store/language.selectors';
+import { Subject, takeUntil } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, HasRoleDirective],
+  imports: [
+    CommonModule,
+    RouterLink,
+    RouterLinkActive,
+    HasRoleDirective,
+    TranslateModule,
+    LanguageSwitcherComponent,
+  ],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.scss',
 })
-export class Navbar {
+export class Navbar implements OnInit, OnDestroy {
   authService = inject(AuthService);
   router = inject(Router);
+  private store = inject(Store);
 
   isMobileMenuOpen = false;
   isDropdownOpen = false;
-  isHomePage = false; // 👈 new flag for dynamic style
+  isHomePage = false;
+  currentLang: string | undefined;
 
-  constructor() {
-    // Listen to route changes and update navbar style
+  private destroy$ = new Subject<void>();
+
+  ngOnInit(): void {
+    // Listen to route changes
     this.router.events
-      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
       .subscribe((event) => {
         this.isHomePage = event.urlAfterRedirects === '/';
       });
+
+    // Subscribe to language changes
+    this.store
+      .select(selectCurrentLanguage)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((lang) => {
+        this.currentLang = lang;
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   get currentUser() {
@@ -40,12 +79,16 @@ export class Navbar {
 
   toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
-    document.body.style.overflow = this.isMobileMenuOpen ? 'hidden' : '';
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = this.isMobileMenuOpen ? 'hidden' : '';
+    }
   }
 
   closeMobileMenu(): void {
     this.isMobileMenuOpen = false;
-    document.body.style.overflow = '';
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
   }
 
   toggleDropdown(): void {
@@ -60,7 +103,6 @@ export class Navbar {
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
     const dropdown = target.closest('.dropdown');
-
     if (!dropdown && this.isDropdownOpen) {
       this.closeDropdown();
     }
@@ -68,7 +110,11 @@ export class Navbar {
 
   @HostListener('window:resize', ['$event'])
   onResize(): void {
-    if (window.innerWidth > 968 && this.isMobileMenuOpen) {
+    if (
+      typeof window !== 'undefined' &&
+      window.innerWidth > 968 &&
+      this.isMobileMenuOpen
+    ) {
       this.closeMobileMenu();
     }
   }

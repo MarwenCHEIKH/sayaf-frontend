@@ -1,7 +1,7 @@
 <nav class="navbar" [class.transparent-navbar]="isHomePage">
   <div class="navbar-container">
     <!-- Logo -->
-    <a class="logo" routerLink="/" aria-label="Sayaf.tn Home">
+    <a class="logo" routerLink="/" aria-label="TunisiaHub.tn Home">
       <svg
         class="logo-icon"
         viewBox="0 0 24 24"
@@ -30,9 +30,9 @@
           stroke-linejoin="round"
         />
       </svg>
-      <span class="logo-text"
-        >TunisiaHub<span class="logo-suffix">.tn</span></span
-      >
+      <span class="logo-text">
+        {{ "common.appName" | translate }}<span class="logo-suffix">.tn</span>
+      </span>
     </a>
 
     <!-- Search Bar (Desktop) -->
@@ -54,7 +54,7 @@
       <input
         type="text"
         class="search-input"
-        placeholder="Search restaurants, hotels, experiences..."
+        [placeholder]="'common.searchPlaceholder' | translate"
         aria-label="Search"
       />
     </div>
@@ -100,7 +100,7 @@
           <input
             type="text"
             class="search-input"
-            placeholder="Search..."
+            [placeholder]="'common.searchPlaceholderMobile' | translate"
             aria-label="Search"
           />
         </div>
@@ -135,9 +135,10 @@
               stroke-linejoin="round"
             />
           </svg>
-          <span>Home</span>
+          <span>{{ "common.home" | translate }}</span>
         </a>
       </li>
+
       <li class="nav-item">
         <a
           routerLink="/listings"
@@ -164,13 +165,14 @@
               stroke-linecap="round"
             />
           </svg>
-          <span>Discover</span>
+          <span>{{ "common.discover" | translate }}</span>
         </a>
       </li>
 
       <!-- Guest Links -->
       <ng-container *ngIf="!authService.isAuthenticated()">
         <li class="nav-item mobile-divider"></li>
+
         <li class="nav-item auth-item">
           <a
             routerLink="/login"
@@ -178,9 +180,10 @@
             class="btn-login"
             (click)="closeMobileMenu()"
           >
-            Log in
+            {{ "common.login" | translate }}
           </a>
         </li>
+
         <li class="nav-item auth-item">
           <a
             routerLink="/register"
@@ -188,8 +191,13 @@
             class="btn-signup"
             (click)="closeMobileMenu()"
           >
-            Sign up
+            {{ "common.signup" | translate }}
           </a>
+        </li>
+
+        <!-- Language Toggle -->
+        <li class="nav-item lang-toggle">
+          <app-language-switcher></app-language-switcher>
         </li>
       </ng-container>
 
@@ -218,7 +226,7 @@
                 stroke-linejoin="round"
               />
             </svg>
-            <span>Add Listing</span>
+            <span>{{ "common.addListing" | translate }}</span>
           </a>
         </li>
 
@@ -243,7 +251,7 @@
                 stroke-linejoin="round"
               />
             </svg>
-            <span>My Listings</span>
+            <span>{{ "common.myListings" | translate }}</span>
           </a>
         </li>
 
@@ -268,7 +276,7 @@
                 stroke-linejoin="round"
               />
             </svg>
-            <span>Dashboard</span>
+            <span>{{ "common.dashboard" | translate }}</span>
           </a>
         </li>
 
@@ -301,7 +309,7 @@
                 stroke-linecap="round"
               />
             </svg>
-            <span>Admin</span>
+            <span>{{ "common.admin" | translate }}</span>
             <svg
               class="dropdown-arrow"
               viewBox="0 0 24 24"
@@ -317,6 +325,7 @@
               />
             </svg>
           </button>
+
           <ul class="dropdown-menu" [class.show]="isDropdownOpen">
             <li>
               <a
@@ -337,9 +346,10 @@
                     stroke-linejoin="round"
                   />
                 </svg>
-                Manage Listings
+                {{ "common.manageListings" | translate }}
               </a>
             </li>
+
             <li>
               <a
                 routerLink="/admin/verify-businesses"
@@ -359,9 +369,10 @@
                     stroke-linejoin="round"
                   />
                 </svg>
-                Verify Businesses
+                {{ "common.verifyBusinesses" | translate }}
               </a>
             </li>
+
             <li>
               <a
                 routerLink="/admin/users"
@@ -381,7 +392,7 @@
                     stroke-linejoin="round"
                   />
                 </svg>
-                Manage Users
+                {{ "common.manageUsers" | translate }}
               </a>
             </li>
           </ul>
@@ -408,7 +419,7 @@
                 stroke-linejoin="round"
               />
             </svg>
-            <span>Profile</span>
+            <span>{{ "common.profile" | translate }}</span>
           </a>
         </li>
 
@@ -429,7 +440,7 @@
                 stroke-linejoin="round"
               />
             </svg>
-            <span>Logout</span>
+            <span>{{ "common.logout" | translate }}</span>
           </a>
         </li>
       </ng-container>

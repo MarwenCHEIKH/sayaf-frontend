@@ -1,7 +1,3 @@
-/* ========================================
-   MINIMALIST NAVBAR - Inspired by Yelp/Airbnb
-   ======================================== */
-
 /* --- Color Variables --- */
 $navbar-bg: #ffffff;
 $navbar-border: #e5e7eb;
@@ -10,7 +6,7 @@ $text-secondary: #6b7280;
 $text-hover: #111827;
 $accent-color: #ef4444;
 $accent-color-home: white;
-$accent-color-home-alt: #3b82f6; // Blue alternative
+$accent-color-home-alt: #3b82f6;
 $focus-ring: #3b82f6;
 
 .navbar {
@@ -153,11 +149,10 @@ $focus-ring: #3b82f6;
 
         .btn-signup {
           color: white;
-          background: $accent-color-home;
           border: 1px solid rgba(255, 255, 255, 0.3);
 
           &:hover {
-            background: darken($accent-color-home, 8%);
+            background: darken($accent-color, 8%);
             border-color: rgba(255, 255, 255, 0.4);
           }
         }
@@ -182,6 +177,39 @@ $focus-ring: #3b82f6;
 
           &:hover {
             background: rgba(255, 255, 255, 0.1);
+          }
+        }
+      }
+    }
+
+    /* LANGUAGE TOGGLE - TRANSPARENT NAVBAR FIX */
+    .lang-toggle {
+      ::ng-deep app-language-switcher {
+        .language-button {
+          color: white !important;
+          border: none !important;
+          background: transparent !important;
+
+          .nav-icon {
+            color: rgba(255, 255, 255, 0.9) !important;
+            stroke: rgba(255, 255, 255, 0.9) !important;
+          }
+
+          .current-lang {
+            color: white !important;
+          }
+
+          .dropdown-arrow {
+            color: rgba(255, 255, 255, 0.8) !important;
+          }
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+
+            .nav-icon {
+              color: white !important;
+              stroke: white !important;
+            }
           }
         }
       }
@@ -263,7 +291,7 @@ $focus-ring: #3b82f6;
     align-items: center;
 
     @media (max-width: 968px) {
-      display: none; // Hide on mobile
+      display: none;
     }
 
     .search-icon {
@@ -321,7 +349,6 @@ $focus-ring: #3b82f6;
       transition: all 0.3s ease;
     }
 
-    /* Hamburger animation */
     &.active .hamburger-line:nth-child(1) {
       transform: rotate(45deg) translateY(7px);
     }
@@ -346,7 +373,6 @@ $focus-ring: #3b82f6;
     margin: 0;
     padding: 0;
 
-    /* --- Nav Item --- */
     .nav-item {
       position: relative;
 
@@ -394,7 +420,6 @@ $focus-ring: #3b82f6;
         }
       }
 
-      /* Logout link specific styling */
       .logout-link {
         color: $text-secondary;
 
@@ -409,7 +434,6 @@ $focus-ring: #3b82f6;
       }
     }
 
-    /* --- Auth Buttons (Login/Signup) --- */
     .auth-item {
       .btn-login {
         padding: 0.5rem 1rem;
@@ -434,12 +458,10 @@ $focus-ring: #3b82f6;
       }
     }
 
-    /* --- Mobile Divider --- */
     .mobile-divider {
       display: none;
     }
 
-    /* --- Hide Mobile Search on Desktop --- */
     .mobile-search {
       display: none;
     }
@@ -536,7 +558,6 @@ $focus-ring: #3b82f6;
         right: 0;
       }
 
-      /* Show mobile search */
       .mobile-search {
         display: block;
         margin-bottom: 1rem;
@@ -607,7 +628,6 @@ $focus-ring: #3b82f6;
         margin: 1rem 0;
       }
 
-      /* Dropdown on mobile */
       .dropdown {
         .dropdown-menu {
           position: static;
@@ -622,6 +642,58 @@ $focus-ring: #3b82f6;
 
           &.show {
             display: block;
+          }
+        }
+      }
+    }
+  }
+
+  /* ==================== LANGUAGE TOGGLE ==================== */
+  .lang-toggle {
+    display: flex;
+    align-items: center;
+    margin-left: 0.5rem;
+
+    @media (max-width: 968px) {
+      width: 100%;
+      margin-left: 0;
+      margin-top: 0.5rem;
+    }
+
+    ::ng-deep app-language-switcher {
+      @media (max-width: 968px) {
+        width: 100%;
+      }
+
+      .language-switcher {
+        @media (max-width: 968px) {
+          width: 100%;
+        }
+      }
+
+      .language-button {
+        @media (max-width: 968px) {
+          width: 100%;
+          justify-content: flex-start;
+          padding: 0.875rem 1rem;
+          color: $text-primary !important;
+
+          .nav-icon {
+            color: $text-secondary !important;
+          }
+
+          .current-lang {
+            flex: 1;
+            text-align: left;
+            color: $text-primary !important;
+          }
+
+          .dropdown-arrow {
+            color: $text-secondary !important;
+          }
+
+          &:hover {
+            background: #f9fafb !important;
           }
         }
       }

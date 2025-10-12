@@ -35,7 +35,6 @@ export class ListingService {
       ? new HttpHeaders({ Authorization: `Bearer ${token}` })
       : undefined;
     return this.http.get<Listing[]>(this.apiUrl, { headers }).pipe(
-      tap((data) => console.log('🛰️ Raw backend response:', data)),
       map((listings) => this.processListings(listings)),
       catchError(this.handleError)
     );
@@ -55,9 +54,6 @@ export class ListingService {
       : undefined;
 
     return this.http.get<Listing>(`${this.apiUrl}/${id}`, { headers }).pipe(
-      tap((listingsWithPhotos) =>
-        console.log('🖼️ Listings with photos:', listingsWithPhotos)
-      ),
       map((listing) => this.processListing(listing)),
       catchError(this.handleError)
     );
@@ -124,8 +120,7 @@ export class ListingService {
         const sorted = scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 
         return sorted.slice(0, limit);
-      }),
-      tap((top) => console.log('🌟 Top listings (featured):', top))
+      })
     );
   }
 }

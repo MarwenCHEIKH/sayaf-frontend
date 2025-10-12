@@ -1,0 +1,51 @@
+{
+  "common": {
+    "appName": "TunisiaHub",
+    "searchPlaceholder": "Rechercher des restaurants, hôtels, expériences...",
+    "searchPlaceholderMobile": "Rechercher...",
+    "home": "Accueil",
+    "discover": "Découvrir",
+    "login": "Se connecter",
+    "signup": "S'inscrire",
+    "addListing": "Ajouter une annonce",
+    "myListings": "Mes annonces",
+    "dashboard": "Tableau de bord",
+    "admin": "Admin",
+    "manageListings": "Gérer les annonces",
+    "verifyBusinesses": "Vérifier les entreprises",
+    "manageUsers": "Gérer les utilisateurs",
+    "profile": "Profil",
+    "logout": "Se déconnecter"
+  },
+  "navigation": {
+    "home": "Accueil",
+    "about": "À propos",
+    "contact": "Contact",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "logout": "Déconnexion"
+  },
+  "auth": {
+    "login": "Connexion",
+    "register": "S'inscrire",
+    "email": "Email",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "rememberMe": "Se souvenir de moi",
+    "loginSuccess": "Connexion réussie",
+    "loginError": "Identifiants invalides"
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire",
+    "email": "Veuillez entrer un email valide",
+    "minLength": "La longueur minimale est de {{min}} caractères",
+    "maxLength": "La longueur maximale est de {{max}} caractères",
+    "pattern": "Format invalide"
+  },
+  "messages": {
+    "noData": "Aucune donnée disponible",
+    "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cet élément ?",
+    "saveSuccess": "Modifications enregistrées avec succès",
+    "saveError": "Échec de l'enregistrement des modifications"
+  }
+}

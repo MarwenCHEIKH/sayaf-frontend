@@ -1,0 +1,51 @@
+{
+  "common": {
+    "appName": "TunisiaHub",
+    "searchPlaceholder": "ابحث عن مطاعم، فنادق، تجارب...",
+    "searchPlaceholderMobile": "ابحث...",
+    "home": "الرئيسية",
+    "discover": "اكتشف",
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب",
+    "addListing": "أضف إعلان",
+    "myListings": "إعلاناتي",
+    "dashboard": "لوحة التحكم",
+    "admin": "إدارة",
+    "manageListings": "إدارة الإعلانات",
+    "verifyBusinesses": "التحقق من الشركات",
+    "manageUsers": "إدارة المستخدمين",
+    "profile": "الملف الشخصي",
+    "logout": "تسجيل الخروج"
+  },
+  "navigation": {
+    "home": "الرئيسية",
+    "about": "حول",
+    "contact": "اتصل بنا",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "rememberMe": "تذكرني",
+    "loginSuccess": "تم تسجيل الدخول بنجاح",
+    "loginError": "بيانات اعتماد غير صالحة"
+  },
+  "validation": {
+    "required": "هذا الحقل مطلوب",
+    "email": "يرجى إدخال بريد إلكتروني صالح",
+    "minLength": "الحد الأدنى للطول هو {{min}} حرفًا",
+    "maxLength": "الحد الأقصى للطول هو {{max}} حرفًا",
+    "pattern": "تنسيق غير صالح"
+  },
+  "messages": {
+    "noData": "لا توجد بيانات متاحة",
+    "deleteConfirm": "هل أنت متأكد من حذف هذا العنصر؟",
+    "saveSuccess": "تم حفظ التغييرات بنجاح",
+    "saveError": "فشل في حفظ التغييرات"
+  }
+}
