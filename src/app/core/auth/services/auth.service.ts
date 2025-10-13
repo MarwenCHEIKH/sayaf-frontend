@@ -1,4 +1,4 @@
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Inject, Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
@@ -24,20 +24,19 @@ export interface User {
   providedIn: 'root',
 })
 export class AuthService {
-  private http = inject(HttpClient);
-  private platformId = inject(PLATFORM_ID);
-  private router = inject(Router);
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
+    this.initializeUser();
+  }
 
   private apiUrl = 'http://localhost:3000';
 
   // Observable for reactive role checking
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
-
-  constructor() {
-    // Initialize user on service creation
-    this.initializeUser();
-  }
 
   private initializeUser() {
     const token = this.getToken();
