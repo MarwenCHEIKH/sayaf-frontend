@@ -1,0 +1,85 @@
+.location-picker {
+  position: relative;
+}
+.location-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.location-display:hover {
+  border-color: #2196f3;
+}
+.location-icon {
+  font-size: 18px;
+}
+.location-text {
+  font-weight: 500;
+  flex: 1;
+}
+.dropdown-arrow {
+  font-size: 12px;
+  color: #666;
+}
+
+.location-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 400px;
+  overflow: hidden;
+}
+
+.search-box {
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.location-options {
+  max-height: 300px;
+  overflow-y: auto;
+}
+.location-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.location-option:hover {
+  background: #f5f5f5;
+}
+.location-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.current-location {
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 500;
+  color: #2196f3;
+}
+.option-icon {
+  font-size: 16px;
+}

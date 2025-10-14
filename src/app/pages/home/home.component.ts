@@ -9,7 +9,7 @@ import {
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { LazyLoadVideoDirective } from '../../shared/directives/lazy-load-video.directive';
-import { ListingService } from '../../services/listing.service';
+import { ListingService } from '../../services/listing-service/listing.service';
 import { ListingWithPhotos } from '../../models/listing.model';
 
 @Component({

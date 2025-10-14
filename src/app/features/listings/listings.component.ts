@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { ListingService } from '../../services/listing.service';
+import { ListingService } from '../../services/listing-service/listing.service';
 import { ListingWithPhotos } from '../../models/listing.model';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';

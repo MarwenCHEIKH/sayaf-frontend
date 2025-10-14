@@ -3,6 +3,7 @@ import {
   provideZoneChangeDetection,
   PLATFORM_ID,
   provideAppInitializer,
+  isDevMode,
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideClientHydration } from '@angular/platform-browser';
@@ -20,7 +21,16 @@ import { isPlatformBrowser, isPlatformServer } from '@angular/common';
 import { inject } from '@angular/core';
 import { Observable, of, tap } from 'rxjs';
 import { provideStore } from '@ngrx/store';
-import { languageReducer } from './core/i18n/store/language.reducer';
+import { languageReducer } from './store/i18n/language.reducer';
+import { locationReducer } from './store/location/location.reducer';
+import { provideEffects } from '@ngrx/effects';
+import { locationEffects } from './store/location/location.effects';
+import { provideStoreDevtools } from '@ngrx/store-devtools';
+import {
+  getInitialLocationState,
+  metaReducers,
+} from './store/meta-reducers/local-storage.metareducer';
+import { AppState } from './store/app.state';
 
 let fs: any;
 try {
@@ -65,10 +75,21 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideClientHydration(),
     provideHttpClient(withFetch(), withInterceptors([languageInterceptor])),
-    provideStore({
-      language: languageReducer,
-      // other slices here
-    }),
+    provideStore<AppState>(
+      {
+        language: languageReducer,
+        location: locationReducer,
+      },
+      {
+        metaReducers,
+        initialState: {
+          location: getInitialLocationState(),
+        },
+      }
+    ),
+
+    provideEffects(locationEffects),
+    provideStoreDevtools({ maxAge: 25, logOnly: !isDevMode() }),
     provideTranslateService({
       fallbackLang: 'en',
       loader: {

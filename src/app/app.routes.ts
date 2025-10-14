@@ -63,4 +63,12 @@ export const routes: Routes = [
         (m) => m.ListingsComponent
       ),
   },
+
+  {
+    path: 'location-picker',
+    loadComponent: () =>
+      import('./shared/location-picker/location-picker.component').then(
+        (m) => m.LocationPickerComponent
+      ),
+  },
 ];

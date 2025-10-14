@@ -5,7 +5,7 @@ import {
   HttpHandler,
 } from '@angular/common/http';
 import { Store } from '@ngrx/store';
-import { selectCurrentLanguage } from './store/language.selectors';
+import { selectCurrentLanguage } from '../../store/i18n/language.selectors';
 import { take } from 'rxjs/operators';
 
 export const languageInterceptor: HttpInterceptorFn = (req, next) => {

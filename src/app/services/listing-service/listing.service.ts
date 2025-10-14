@@ -6,8 +6,8 @@ import {
 } from '@angular/common/http';
 import { Observable, throwError, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
-import { Listing, ListingWithPhotos } from '../models/listing.model';
-import { environment } from '../../environments/environment';
+import { Listing, ListingWithPhotos } from '../../models/listing.model';
+import { environment } from '../../../environments/environment';
 import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({
@@ -20,21 +20,17 @@ export class ListingService {
     private http: HttpClient,
     @Inject(PLATFORM_ID) private platformId: any
   ) {}
-
   /**
    * Fetch all listings from the backend (SSR-safe)
    */
   getListings(): Observable<ListingWithPhotos[]> {
-    // Skip API call on the server to avoid invalid/missing JWT
+    // Skip API call on the server (SSR)
     if (!isPlatformBrowser(this.platformId)) {
       return of([]); // return empty array during SSR
     }
 
-    const token = localStorage.getItem('token') || '';
-    const headers = token
-      ? new HttpHeaders({ Authorization: `Bearer ${token}` })
-      : undefined;
-    return this.http.get<Listing[]>(this.apiUrl, { headers }).pipe(
+    // No Authorization header — public access
+    return this.http.get<Listing[]>(this.apiUrl).pipe(
       map((listings) => this.processListings(listings)),
       catchError(this.handleError)
     );
@@ -78,8 +74,6 @@ export class ListingService {
         if (img.startsWith('http')) {
           return img;
         }
-        // Use environment.apiUrl directly (which is http://localhost:3000)
-        // NOT this.apiUrl (which is http://localhost:3000/listings)
         return `${environment.apiUrl}${img}`;
       });
       urls.push(...resolved);

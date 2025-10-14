@@ -1,59 +1,199 @@
-# Frontend
+# TunisiaHub.tn Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.17.
+TunisiaHub is a Tunisian directory platform for discovering restaurants, hotels, cafés and more ...  
+This repository contains the **Angular 19 frontend**.
 
-## Development server
+---
 
-To start a local development server, run:
+## **Tech Stack**
+
+- Angular 19 (Standalone + NgRx)
+- RxJS
+- ngx-translate for i18n
+- Authentication: Google + facebook
+- NgRx for global state (language slice)
+- Responsive UI with dynamic navbar and mobile menu
+- Directives: `HasRole`, `ClickOutside`
+- Testing: Karma + Jasmine (unit)
+
+---
+
+## **Current Features**
+
+✅ Authentication:
+
+- Login / Register (facebook + Google)
+- AuthGuard for role-based access
+- OAuthCallbackComponent for social login handling
+
+✅ i18n:
+
+- Nested JSON translation keys
+- NgRx store for language management
+- Browser language detection & localStorage persistence
+- Dynamic RTL support for Arabic
+- Language switcher component
+- HTTP interceptor adds `Accept-Language` header
+
+✅ UI Components:
+
+- Dynamic, responsive navbar
+- Listings component and service
+- Add-listing component (partial)
+- Home page
+- Directives: `HasRole`, `ClickOutside`
+
+---
+
+## **Setup & Running Locally**
 
 ```bash
-ng serve
+git clone https://github.com/yourusername/tunisiahub-frontend.git
+cd tunisiahub-frontend
+npm install
+npm start
+App runs at http://localhost:4200.
+
+Testing
+Run unit tests:
+npm run test
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+# Architecture Overview
 
-## Code scaffolding
+## Folder Structure
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+.
+├── README.md
+├── angular.json
+├── package-lock.json
+├── package.json
+├── public
+│   └── favicon.ico
+├── src
+│   ├── app
+│   │   ├── app.component.html
+│   │   ├── app.component.scss
+│   │   ├── app.component.spec.ts
+│   │   ├── app.component.ts
+│   │   ├── app.config.server.ts
+│   │   ├── app.config.ts
+│   │   ├── app.routes.ts
+│   │   ├── core
+│   │   │   ├── auth
+│   │   │   │   ├── guards
+│   │   │   │   │   ├── auth.guard.spec.ts
+│   │   │   │   │   └── auth.guard.ts
+│   │   │   │   ├── oauth-callback
+│   │   │   │   │   ├── oauth-callback.component.html
+│   │   │   │   │   ├── oauth-callback.component.scss
+│   │   │   │   │   ├── oauth-callback.component.spec.ts
+│   │   │   │   │   └── oauth-callback.component.ts
+│   │   │   │   └── services
+│   │   │   │   ├── auth.service.spec.ts
+│   │   │   │   └── auth.service.ts
+│   │   │   └── i18n
+│   │   │   ├── components
+│   │   │   │   └── language-switcher
+│   │   │   ├── language.config.ts
+│   │   │   ├── language.interceptor.ts
+│   │   │   ├── language.service.ts
+│   │   │   └── store
+│   │   │   ├── language.actions.ts
+│   │   │   ├── language.effects.ts
+│   │   │   ├── language.reducer.ts
+│   │   │   └── language.selectors.ts
+│   │   ├── directives
+│   │   │   ├── clickOutside
+│   │   │   │   ├── click-outside.directive.spec.ts
+│   │   │   │   └── click-outside.directive.ts
+│   │   │   └── hasRole
+│   │   │   ├── has-role.directive.spec.ts
+│   │   │   └── has-role.directive.ts
+│   │   ├── features
+│   │   │   ├── add-listing
+│   │   │   │   ├── add-listing.component.html
+│   │   │   │   ├── add-listing.component.scss
+│   │   │   │   ├── add-listing.component.spec.ts
+│   │   │   │   └── add-listing.component.ts
+│   │   │   ├── dashboard
+│   │   │   │   ├── dashboard.component.html
+│   │   │   │   ├── dashboard.component.scss
+│   │   │   │   ├── dashboard.component.spec.ts
+│   │   │   │   └── dashboard.component.ts
+│   │   │   └── listings
+│   │   │   ├── listings.component.html
+│   │   │   ├── listings.component.scss
+│   │   │   ├── listings.component.spec.ts
+│   │   │   └── listings.component.ts
+│   │   ├── models
+│   │   │   └── listing.model.ts
+│   │   ├── pages
+│   │   │   ├── auth
+│   │   │   │   ├── login
+│   │   │   │   │   ├── login.component.html
+│   │   │   │   │   ├── login.component.scss
+│   │   │   │   │   ├── login.component.spec.ts
+│   │   │   │   │   └── login.component.ts
+│   │   │   │   └── register
+│   │   │   │   ├── register.component.html
+│   │   │   │   ├── register.component.scss
+│   │   │   │   ├── register.component.spec.ts
+│   │   │   │   └── register.component.ts
+│   │   │   └── home
+│   │   │   ├── home.component.html
+│   │   │   ├── home.component.scss
+│   │   │   ├── home.component.spec.ts
+│   │   │   └── home.component.ts
+│   │   ├── services
+│   │   │   ├── listing.service.spec.ts
+│   │   │   └── listing.service.ts
+│   │   └── shared
+│   │   ├── directives
+│   │   │   └── lazy-load-video.directive.ts
+│   │   └── navbar
+│   │   ├── navbar.component.html
+│   │   ├── navbar.component.scss
+│   │   ├── navbar.component.spec.ts
+│   │   └── navbar.component.ts
+│   ├── assets
+│   │   ├── i18n
+│   │   │   ├── ar.json
+│   │   │   ├── en.json
+│   │   │   └── fr.json
+│   │   ├── images
+│   │   │   └── poster.jpg
+│   │   └── videos
+│   │   └── background.mp4
+│   ├── environments
+│   │   ├── environment.prod.ts
+│   │   └── environment.ts
+│   ├── index.html
+│   ├── main.server.ts
+│   ├── main.ts
+│   ├── server.ts
+│   ├── styles
+│   │   └── theme.scss
+│   └── styles.scss
+├── tsconfig.app.json
+├── tsconfig.json
+└── tsconfig.spec.json
 
-```bash
-ng generate component component-name
-```
+## **Explanation**
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+- **`src/app/core`**: Core application logic (auth, i18n, global services).
+- **`src/app/features`**: Feature modules/components (dashboard, listings, add-listing).
+- **`src/app/pages`**: Page-level components (home, auth/login, auth/register).
+- **`src/app/services`**: Shared services for API interactions.
+- **`src/app/shared`**: Reusable components and directives (navbar, lazy-loading directive).
+- **`src/assets`**: Static assets (images, videos, translation files).
+- **`src/environments`**: Environment-specific configuration files.
+- **NgRx Store**:
+  - `language` slice
+  - Future slices: `user`, `listings`, etc.
 
-```bash
-ng generate --help
-```
+## Routing & Guards
 
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- `AuthGuard` for protected routes
+- `HasRoleDirective` for role-based UI visibility
+- OAuthCallbackComponent handles social login redirects

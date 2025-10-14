@@ -5,7 +5,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { ClickOutsideDirective } from '../../../../directives/clickOutside/click-outside.directive';
 import { LanguageService } from '../../language.service';
 import { Store } from '@ngrx/store';
-import { selectCurrentLanguage } from '../../store/language.selectors';
+import { selectCurrentLanguage } from '../../../../store/i18n/language.selectors';
 import { Observable } from 'rxjs';
 import { LanguageOption, SUPPORTED_LANGUAGES } from '../../language.config';
 

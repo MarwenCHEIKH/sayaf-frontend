@@ -1,7 +1,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { Store } from '@ngrx/store';
-import { setLanguage } from './store/language.actions';
+import { setLanguage } from '../../store/i18n/language.actions';
 import {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,

@@ -1,0 +1,41 @@
+<div class="location-picker">
+  <div class="location-display" (click)="toggleDropdown()">
+    <span class="location-icon">📍</span>
+    <span class="location-text">{{
+      (currentLocation$ | async)?.city || "Tunis"
+    }}</span>
+    <span class="dropdown-arrow">▼</span>
+  </div>
+
+  @if (showDropdown()) {
+  <div class="location-dropdown">
+    <div class="search-box">
+      <input
+        type="text"
+        placeholder="Search location..."
+        [(ngModel)]="searchQuery"
+        (input)="onSearchInput($event)"
+        class="search-input"
+      />
+    </div>
+
+    <div class="location-options">
+      <button
+        class="location-option current-location"
+        (click)="useCurrentLocation()"
+        [disabled]="locationLoading$ | async"
+      >
+        <span class="option-icon">🎯</span>
+        <span>Use Current Location</span>
+      </button>
+
+      @for (result of searchResults(); track result.displayName) {
+      <button class="location-option" (click)="selectLocation(result)">
+        <span class="option-icon">📍</span>
+        <span>{{ result.displayName }}</span>
+      </button>
+      }
+    </div>
+  </div>
+  }
+</div>

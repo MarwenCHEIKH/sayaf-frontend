@@ -18,7 +18,7 @@ import { AuthService } from '../../core/auth/services/auth.service';
 import { HasRoleDirective } from '../../directives/hasRole/has-role.directive';
 import { LanguageSwitcherComponent } from '../../core/i18n/components/language-switcher/language-switcher.component';
 import { Store } from '@ngrx/store';
-import { selectCurrentLanguage } from '../../core/i18n/store/language.selectors';
+import { selectCurrentLanguage } from '../../store/i18n/language.selectors';
 import { Subject, takeUntil } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
