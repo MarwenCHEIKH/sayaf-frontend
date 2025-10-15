@@ -10,5 +10,5 @@ import { TranslateModule } from '@ngx-translate/core';
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
-  title = 'frontend';
+  title = 'TunisiaVibe';
 }

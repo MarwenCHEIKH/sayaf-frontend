@@ -65,10 +65,10 @@ export const routes: Routes = [
   },
 
   {
-    path: 'location-picker',
+    path: 'map-test',
     loadComponent: () =>
-      import('./shared/location-picker/location-picker.component').then(
-        (m) => m.LocationPickerComponent
+      import('./map-test/map-test/map-test.component').then(
+        (m) => m.MapTestComponent
       ),
   },
 ];
