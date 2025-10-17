@@ -1,3 +1,4 @@
+// src/app/store/listings/listings.reducer.ts
 import { createReducer, on } from '@ngrx/store';
 import { ListingsActions } from './listings.actions';
 import { ListingsState, initialListingsState } from './listings.state';
@@ -12,20 +13,17 @@ export const listingsReducer = createReducer(
       loading: true,
       error: null,
       filters: { ...state.filters, ...filters },
-      page: reset ? 1 : state.page,
       items: reset ? [] : state.items,
     })
   ),
 
   on(
     ListingsActions.loadListingsSuccess,
-    (state, { listings, total, append }): ListingsState => ({
+    (state, { listings, total, append }) => ({
       ...state,
       items: append ? [...state.items, ...listings] : listings,
       total,
       loading: false,
-      error: null,
-      hasMore: (append ? state.items.length : 0) + listings.length < total,
     })
   ),
 
@@ -35,15 +33,6 @@ export const listingsReducer = createReducer(
       ...state,
       loading: false,
       error,
-    })
-  ),
-
-  on(
-    ListingsActions.loadMoreListings,
-    (state): ListingsState => ({
-      ...state,
-      page: state.page + 1,
-      loading: true,
     })
   ),
 

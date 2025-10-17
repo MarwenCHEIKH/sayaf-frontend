@@ -3,30 +3,30 @@ import {
   Input,
   Output,
   EventEmitter,
-  ChangeDetectionStrategy,
+  HostListener,
   signal,
   computed,
-  HostListener,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ListingWithPhotos } from '../../models/listing.model';
 
 @Component({
   selector: 'app-listings',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, RouterModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listings.component.html',
   styleUrls: ['./listings.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ListingsComponent {
   // Inputs from parent container
   @Input({ required: true }) set listings(value: ListingWithPhotos[]) {
-    this.displayedListings.set(value);
+    this._listings.set(value);
     this.initializeImageIndices(value);
   }
+
   @Input() loading = false;
   @Input() selectedId?: number;
   @Input() hasMore = true;
@@ -42,9 +42,13 @@ export class ListingsComponent {
   }>();
   @Output() reviewScoreChange = new EventEmitter<number>();
 
-  // Public signals for template
-  displayedListings = signal<ListingWithPhotos[]>([]);
+  // Internal signal for listings
+  private _listings = signal<ListingWithPhotos[]>([]);
 
+  // Public accessor
+  displayedListings = computed(() => this._listings());
+
+  // UI state
   showFilters = signal(false);
   searchQuery = signal('');
   selectedTypes = signal<string[]>([]);
@@ -138,9 +142,10 @@ export class ListingsComponent {
   }
 
   private shouldLoadMore(): boolean {
-    if (!this.hasMoreSignal() || this.loadingSignal()) {
+    if (!this.hasMore || this.loading) {
       return false;
     }
+
     const scrollPosition = window.innerHeight + window.scrollY;
     const scrollThreshold = document.documentElement.scrollHeight - 500;
 

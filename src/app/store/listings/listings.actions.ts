@@ -7,6 +7,7 @@ import { MapBounds } from '../../models/map.model';
 export const ListingsActions = createActionGroup({
   source: 'Listings',
   events: {
+    // Load listings from API
     'Load Listings': props<{
       filters: Partial<ListingsFilters>;
       reset?: boolean;
@@ -17,11 +18,16 @@ export const ListingsActions = createActionGroup({
       append: boolean;
     }>(),
     'Load Listings Failure': props<{ error: string }>(),
-    'Load More Listings': emptyProps(),
+
+    // Update API-level filters
     'Update Filters': props<{ filters: Partial<ListingsFilters> }>(),
     'Update Map Bounds': props<{ bounds: MapBounds }>(),
+
+    // Selection
     'Select Listing': props<{ id: number }>(),
     'Clear Selection': emptyProps(),
+
+    // Reset
     'Reset Listings': emptyProps(),
   },
 });

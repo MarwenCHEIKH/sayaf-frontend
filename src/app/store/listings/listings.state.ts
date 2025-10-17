@@ -15,13 +15,11 @@ export interface ListingsFilters {
 }
 
 export interface ListingsState {
-  items: Listing[];
-  total: number;
+  items: Listing[]; // All listings from API
+  total: number; // Total count from API
   loading: boolean;
   error: string | null;
-  filters: ListingsFilters;
-  page: number;
-  hasMore: boolean;
+  filters: ListingsFilters; // API-level filters
   selectedListingId?: number;
 }
 
@@ -34,6 +32,4 @@ export const initialListingsState: ListingsState = {
     location: { lat: 36.8065, lng: 10.1815 },
     radius: 10,
   },
-  page: 1,
-  hasMore: true,
 };

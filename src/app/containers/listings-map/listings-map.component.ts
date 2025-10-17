@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   inject,
   signal,
+  computed,
   PLATFORM_ID,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
@@ -16,7 +17,6 @@ import {
   selectListings,
   selectListingsLoading,
   selectSelectedListingId,
-  selectHasMoreListings,
 } from '../../store/listings/listings.selectors';
 import { selectCurrentLocation } from '../../store/location/location.selectors';
 import { MarkerData, MapMoveEvent } from '../../models/map.model';
@@ -47,29 +47,129 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private platformId = inject(PLATFORM_ID);
 
-  // Store data
-  allListings = signal<ListingWithPhotos[]>([]);
-  displayedListings = signal<ListingWithPhotos[]>([]);
-  markers = signal<MarkerData[]>([]);
-  loading = signal(false);
-  selectedId = signal<number | undefined>(undefined);
-  hasMore = signal(true);
-  mapCenter = signal({ lat: 36.8065, lng: 10.1815 });
-  isMobile = signal(false);
+  // Raw data from store (all listings)
+  private allListings = signal<ListingWithPhotos[]>([]);
 
-  // Mobile panel state
-  panelExpanded = signal(false);
-  previewListings = signal<ListingWithPhotos[]>([]);
-
-  // Filter and sort state
+  // Filter and sort state (local)
   private searchQuery = signal('');
   private selectedTypes = signal<string[]>([]);
   private minReviewScore = signal(0);
   private sortBy = signal<'rating' | 'price' | 'reviewScore'>('reviewScore');
   private sortOrder = signal<'asc' | 'desc'>('desc');
 
+  // Pagination state (local)
+  private displayCount = signal(10); // How many items to show
+  private readonly ITEMS_PER_LOAD = 10;
+
   // Search subject for debouncing
   private searchSubject$ = new Subject<string>();
+
+  // Computed: filtered and sorted listings (all matches, not paginated)
+  private filteredAndSortedListings = computed(() => {
+    let listings = [...this.allListings()];
+
+    // Apply search filter
+    const query = this.searchQuery().trim().toLowerCase();
+    if (query) {
+      listings = listings.filter(
+        (listing) =>
+          listing.name.toLowerCase().includes(query) ||
+          listing.type.some((t) => t.toLowerCase().includes(query)) ||
+          listing.vicinity?.toLowerCase().includes(query) ||
+          listing.formatted_address?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply type filter
+    const types = this.selectedTypes();
+    if (types.length > 0) {
+      listings = listings.filter((listing) =>
+        listing.type.some((type) => types.includes(type))
+      );
+    }
+
+    // Apply review score filter
+    const minScore = this.minReviewScore();
+    if (minScore > 0) {
+      listings = listings.filter(
+        (listing) => this.calculateReviewScore(listing) >= minScore
+      );
+    }
+
+    // Apply sorting
+    const sortBy = this.sortBy();
+    const sortOrder = this.sortOrder();
+
+    if (sortBy === 'reviewScore') {
+      listings.sort((a, b) => {
+        const scoreA = this.calculateReviewScore(a);
+        const scoreB = this.calculateReviewScore(b);
+        return sortOrder === 'desc' ? scoreB - scoreA : scoreA - scoreB;
+      });
+    } else if (sortBy === 'rating') {
+      listings.sort((a, b) => {
+        const ratingA = a.rating ?? 0;
+        const ratingB = b.rating ?? 0;
+        return sortOrder === 'desc' ? ratingB - ratingA : ratingA - ratingB;
+      });
+    }
+
+    return listings;
+  });
+
+  // Computed: paginated listings (what's actually displayed)
+  displayedListings = computed(() => {
+    const filtered = this.filteredAndSortedListings();
+    const count = this.displayCount();
+    return filtered.slice(0, count);
+  });
+
+  // Computed: markers (limited to displayed listings for performance)
+  markers = computed(() => {
+    const listings = this.filteredAndSortedListings();
+    const markers: MarkerData[] = listings
+      .reduce<MarkerData[]>((acc, listing) => {
+        const coords = this.mapService.parsePostGISPoint(
+          listing.location_point
+        );
+        if (!coords) return acc;
+
+        acc.push({
+          id: listing.id,
+          name: listing.name,
+          lat: coords.lat,
+          lng: coords.lng,
+          type: listing.type,
+          photo: listing.photoUrls?.[0],
+        });
+
+        return acc;
+      }, [])
+      .slice(0, 100); // Show more markers than displayed listings
+
+    return markers;
+  });
+
+  // Computed: preview listings for mobile
+  previewListings = computed(() => {
+    return this.displayedListings().slice(0, 5);
+  });
+
+  // Computed: whether there are more items to load
+  hasMore = computed(() => {
+    const total = this.filteredAndSortedListings().length;
+    const displayed = this.displayCount();
+    return displayed < total;
+  });
+
+  // Store data
+  loading = this.store.selectSignal(selectListingsLoading);
+  selectedId = this.store.selectSignal(selectSelectedListingId);
+  mapCenter = signal({ lat: 36.8065, lng: 10.1815 });
+  isMobile = signal(false);
+
+  // Mobile panel state
+  panelExpanded = signal(false);
 
   private touchStartY = 0;
   private touchCurrentY = 0;
@@ -102,7 +202,7 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((query) => {
         this.searchQuery.set(query);
-        this.applyFiltersAndSort();
+        this.resetPagination();
       });
   }
 
@@ -122,156 +222,53 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
         );
       });
 
-    // Subscribe to listings state
+    // Subscribe to listings from store (raw data)
     this.store
       .select(selectListings)
       .pipe(takeUntil(this.destroy$))
       .subscribe((listings) => {
-        // const listingsWithPhotos = listings.filter(
-        //   (listing: ListingWithPhotos) =>
-        //     listing.photoUrls &&
-        //     listing.photoUrls.length > 0 &&
-        //     listing.photoUrls.some((url) => !!url && url.trim() !== '')
-        // );
         this.allListings.set(listings);
-        this.applyFiltersAndSort();
-      });
-
-    this.store
-      .select(selectListingsLoading)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((loading) => {
-        this.loading.set(loading);
-      });
-
-    this.store
-      .select(selectSelectedListingId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((selectedId) => {
-        this.selectedId.set(selectedId);
-      });
-
-    this.store
-      .select(selectHasMoreListings)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((hasMore) => {
-        this.hasMore.set(hasMore);
+        // Reset pagination when new data arrives
+        this.resetPagination();
       });
   }
 
-  private applyFiltersAndSort(): void {
-    let filtered = [...this.allListings()];
-
-    // Apply search filter
-    const query = this.searchQuery().trim().toLowerCase();
-    if (query) {
-      filtered = filtered.filter(
-        (listing) =>
-          listing.name.toLowerCase().includes(query) ||
-          listing.type.some((t) => t.toLowerCase().includes(query)) ||
-          listing.vicinity?.toLowerCase().includes(query) ||
-          listing.formatted_address?.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply type filter
-    const types = this.selectedTypes();
-    if (types.length > 0) {
-      filtered = filtered.filter((listing) =>
-        listing.type.some((type) => types.includes(type))
-      );
-    }
-
-    // Apply review score filter
-    const minScore = this.minReviewScore();
-    if (minScore > 0) {
-      filtered = filtered.filter(
-        (listing) => this.calculateReviewScore(listing) >= minScore
-      );
-    }
-
-    // Apply sorting
-    const sortBy = this.sortBy();
-    const sortOrder = this.sortOrder();
-
-    if (sortBy === 'reviewScore') {
-      filtered.sort((a, b) => {
-        const scoreA = this.calculateReviewScore(a);
-        const scoreB = this.calculateReviewScore(b);
-        return sortOrder === 'desc' ? scoreB - scoreA : scoreA - scoreB;
-      });
-    } else if (sortBy === 'rating') {
-      filtered.sort((a, b) => {
-        const ratingA = a.rating ?? 0;
-        const ratingB = b.rating ?? 0;
-        return sortOrder === 'desc' ? ratingB - ratingA : ratingA - ratingB;
-      });
-    }
-
-    this.displayedListings.set(filtered);
-    this.updateMarkers(filtered);
-    this.updatePreviewListings(filtered);
+  private resetPagination(): void {
+    this.displayCount.set(this.ITEMS_PER_LOAD);
   }
 
-  private updateMarkers(listings: ListingWithPhotos[]): void {
-    const markers: MarkerData[] = listings
-      .reduce<MarkerData[]>((acc, listing) => {
-        const coords = this.mapService.parsePostGISPoint(
-          listing.location_point
-        );
-        if (!coords) return acc;
-
-        acc.push({
-          id: listing.id,
-          name: listing.name,
-          lat: coords.lat,
-          lng: coords.lng,
-          type: listing.type,
-          photo: listing.photoUrls?.[0],
-        });
-
-        return acc;
-      }, [])
-      .slice(0, 50); // Limit markers for performance
-
-    this.markers.set(markers);
-  }
-
-  private updatePreviewListings(listings: ListingWithPhotos[]): void {
-    this.previewListings.set(listings.slice(0, 5));
-  }
-  //added
   private calculateReviewScore(listing: ListingWithPhotos): number {
     const rating = listing.rating ?? 0;
     const reviewCount = listing.user_ratings_total ?? 0;
     return rating * Math.log10(1 + reviewCount);
   }
 
-  //added
+  // Event handlers
   onSearchChange(query: string): void {
     this.searchSubject$.next(query);
   }
-  //added
+
   onTypeFilterChange(types: string[]): void {
     this.selectedTypes.set(types);
-    this.applyFiltersAndSort();
+    this.resetPagination();
   }
-  //added
+
   onSortChange(event: {
     sortBy: 'rating' | 'price' | 'reviewScore';
     order: 'asc' | 'desc';
   }): void {
     this.sortBy.set(event.sortBy);
     this.sortOrder.set(event.order);
-    this.applyFiltersAndSort();
+    this.resetPagination();
   }
-  //added
+
   onReviewScoreChange(score: number): void {
     this.minReviewScore.set(score);
-    this.applyFiltersAndSort();
+    this.resetPagination();
   }
 
   onMapMoved(event: MapMoveEvent): void {
+    // Optionally update store with new bounds
     this.store.dispatch(
       ListingsActions.updateMapBounds({ bounds: event.bounds })
     );
@@ -290,12 +287,11 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
   }
 
   onLoadMore(): void {
-    this.store.dispatch(ListingsActions.loadMoreListings());
+    // Simply increase the display count
+    this.displayCount.update((count) => count + this.ITEMS_PER_LOAD);
   }
 
   private scrollToListing(id: number): void {
-    // Implementation depends on your template structure
-    // This is a placeholder for scrolling to the selected listing
     setTimeout(() => {
       const element = document.querySelector(`[data-listing-id="${id}"]`);
       element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
