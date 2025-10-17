@@ -3,12 +3,18 @@ import {
   HttpClient,
   HttpErrorResponse,
   HttpHeaders,
+  HttpParams,
 } from '@angular/common/http';
 import { Observable, throwError, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
-import { Listing, ListingWithPhotos } from '../../models/listing.model';
+import {
+  Listing,
+  ListingsResponse,
+  ListingWithPhotos,
+} from '../../models/listing.model';
 import { environment } from '../../../environments/environment';
 import { isPlatformBrowser } from '@angular/common';
+import { ListingsFilters } from '../../store/listings/listings.state';
 
 @Injectable({
   providedIn: 'root',
@@ -116,5 +122,51 @@ export class ListingService {
         return sorted.slice(0, limit);
       })
     );
+  }
+  getListingsWithFilters(
+    filters?: Partial<ListingsFilters>,
+    page: number = 1,
+    limit: number = 20
+  ): Observable<ListingsResponse> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('limit', limit.toString());
+
+    if (filters?.location) {
+      params = params
+        .set('lat', filters.location.lat.toString())
+        .set('lng', filters.location.lng.toString());
+    }
+
+    if (filters?.radius) {
+      params = params.set('radius', filters.radius.toString());
+    }
+
+    if (filters?.bounds) {
+      params = params
+        .set('north', filters.bounds.north.toString())
+        .set('south', filters.bounds.south.toString())
+        .set('east', filters.bounds.east.toString())
+        .set('west', filters.bounds.west.toString());
+    }
+
+    if (filters?.type && filters.type.length > 0) {
+      params = params.set('type', filters.type.join(','));
+    }
+
+    if (filters?.query) {
+      params = params.set('q', filters.query);
+    }
+
+    return this.http
+      .get<ListingsResponse>(`${this.apiUrl}/${'filtered'}`, { params })
+      .pipe(
+        map((response) => ({
+          listings: response.listings.map((listing) =>
+            this.processListing(listing)
+          ),
+          total: response.total,
+        }))
+      );
   }
 }

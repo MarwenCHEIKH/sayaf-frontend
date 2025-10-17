@@ -1,4 +1,12 @@
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  HostListener,
+  Input,
+  Output,
+  EventEmitter,
+} from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { ListingService } from '../../services/listing-service/listing.service';
@@ -20,7 +28,6 @@ export class ListingsComponent implements OnInit, OnDestroy {
   displayedListings: ListingWithPhotos[] = [];
 
   showFilters = false;
-  loading = false;
   loadingMore = false;
   error: string | null = null;
 
@@ -47,6 +54,14 @@ export class ListingsComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
   private searchSubject$ = new Subject<string>();
+
+  @Input() listings: ListingWithPhotos[] = [];
+  @Input() loading = false;
+  @Input() selectedId?: number;
+  @Input() hasMore = true;
+
+  @Output() listingClick = new EventEmitter<number>();
+  @Output() loadMore = new EventEmitter<void>();
 
   constructor(private listingService: ListingService) {}
 

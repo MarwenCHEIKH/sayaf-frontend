@@ -5,12 +5,18 @@ import { isPlatformBrowser } from '@angular/common';
 @Injectable({ providedIn: 'root' })
 export class MapService {
   private platformId = inject(PLATFORM_ID);
-
-  parsePostGISPoint(point?: string): { lat: number; lng: number } | null {
+  parsePostGISPoint(
+    point?: string | { type: string; coordinates: [number, number] }
+  ): { lat: number; lng: number } | null {
     if (!point) return null;
-    const match = point.match(/POINT\(([^ ]+) ([^ ]+)\)/);
-    if (!match) return null;
-    return { lng: parseFloat(match[1]), lat: parseFloat(match[2]) };
+
+    // Handle GeoJSON object format
+    if (typeof point === 'object' && Array.isArray(point.coordinates)) {
+      const [lng, lat] = point.coordinates;
+      return { lat, lng };
+    }
+
+    return null;
   }
 
   createMarkerIcon(L: any, type: string[], isSelected = false): any {

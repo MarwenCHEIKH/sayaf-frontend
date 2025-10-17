@@ -18,3 +18,8 @@ export interface Listing {
 export interface ListingWithPhotos extends Listing {
   photoUrls?: string[];
 }
+
+export interface ListingsResponse {
+  listings: ListingWithPhotos[];
+  total: number;
+}

@@ -25,12 +25,14 @@ import { languageReducer } from './store/i18n/language.reducer';
 import { locationReducer } from './store/location/location.reducer';
 import { provideEffects } from '@ngrx/effects';
 import { locationEffects } from './store/location/location.effects';
+import { listingsEffects } from './store/listings/listings.effects';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
 import {
   getInitialLocationState,
   metaReducers,
 } from './store/meta-reducers/local-storage.metareducer';
 import { AppState } from './store/app.state';
+import { listingsReducer } from './store/listings/listings.reducer';
 
 let fs: any;
 try {
@@ -79,6 +81,7 @@ export const appConfig: ApplicationConfig = {
       {
         language: languageReducer,
         location: locationReducer,
+        listings: listingsReducer,
       },
       {
         metaReducers,
@@ -88,7 +91,7 @@ export const appConfig: ApplicationConfig = {
       }
     ),
 
-    provideEffects(locationEffects),
+    provideEffects(locationEffects, listingsEffects),
     provideStoreDevtools({ maxAge: 25, logOnly: !isDevMode() }),
     provideTranslateService({
       fallbackLang: 'en',

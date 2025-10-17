@@ -1,0 +1,93 @@
+<div class="listings-map-container">
+  <!-- Header with location picker -->
+  <div class="header">
+    <h1>Discover Tunisia</h1>
+    <app-location-picker />
+  </div>
+
+  <!-- Desktop layout -->
+  <div class="desktop-layout" [class.mobile-hidden]="isMobile()">
+    <div class="listings-panel">
+      <app-listings
+        [listings]="listings()"
+        [loading]="loading()"
+        [selectedId]="selectedId()"
+        [hasMore]="hasMore()"
+        (listingClick)="onListingClick($event)"
+        (loadMore)="onLoadMore()"
+      />
+    </div>
+
+    <div class="map-panel">
+      <app-map
+        [markers]="markers()"
+        [selectedMarkerId]="selectedId()"
+        [center]="mapCenter()"
+        [zoom]="13"
+        [interactive]="true"
+        [enableClustering]="true"
+        (mapMoved)="onMapMoved($event)"
+        (markerClicked)="onMarkerClick($event)"
+      />
+    </div>
+  </div>
+
+  <!-- Mobile layout with sliding panel -->
+  <div class="mobile-layout" [class.desktop-hidden]="!isMobile()">
+    <div class="mobile-map">
+      <app-map
+        [markers]="markers()"
+        [selectedMarkerId]="selectedId()"
+        [center]="mapCenter()"
+        [zoom]="13"
+        [interactive]="true"
+        [enableClustering]="true"
+        (mapMoved)="onMapMoved($event)"
+        (markerClicked)="onMarkerClick($event)"
+      />
+    </div>
+
+    <div
+      class="mobile-sliding-panel"
+      [class.expanded]="panelExpanded()"
+      (touchstart)="onTouchStart($event)"
+      (touchmove)="onTouchMove($event)"
+      (touchend)="onTouchEnd()"
+    >
+      <div class="panel-handle">
+        <div class="handle-bar"></div>
+      </div>
+
+      <div
+        class="panel-preview"
+        *ngIf="!panelExpanded()"
+        (click)="togglePanel()"
+      >
+        <div class="preview-items">
+          <div
+            class="preview-card"
+            *ngFor="let listing of previewListings(); trackBy: trackById"
+            (click)="onListingClick(listing.id); $event.stopPropagation()"
+          >
+            <img [src]="listing.photoUrls?.[0]" [alt]="listing.name" />
+            <div class="preview-info">
+              <h4>{{ listing.name }}</h4>
+              <span>{{ listing.rating }} ⭐</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-full" *ngIf="panelExpanded()">
+        <app-listings
+          [listings]="listings()"
+          [loading]="loading()"
+          [selectedId]="selectedId()"
+          [hasMore]="hasMore()"
+          (listingClick)="onListingClick($event)"
+          (loadMore)="onLoadMore()"
+        />
+      </div>
+    </div>
+  </div>
+</div>

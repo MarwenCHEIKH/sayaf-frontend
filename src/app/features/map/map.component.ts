@@ -81,6 +81,10 @@ export class MapComponent
 
       // Use global Leaflet instance with plugin attached
       this.initMap();
+
+      setTimeout(() => {
+        this.map.invalidateSize(); // forces Leaflet to recalc container size
+      }, 100);
     }
   }
 
@@ -118,6 +122,9 @@ export class MapComponent
   }
 
   private initMap(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
     const L = (window as any).L;
     if (!L) return;
 
@@ -159,6 +166,7 @@ export class MapComponent
   }
 
   private initMarkersLayer(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     const L = (window as any).L;
     if (!L || !this.map) return;
 
@@ -201,6 +209,7 @@ export class MapComponent
   }
 
   private updateMarkers(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     const L = (window as any).L;
     if (!L || !this.map || !this.markersLayer) return;
 
@@ -240,6 +249,7 @@ export class MapComponent
   }
 
   private updateSelectedMarker(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     const L = (window as any).L;
     if (!L || !this.map) return;
 
