@@ -1,152 +1,148 @@
-<!-- src/app/components/listings/listings.component.html -->
-<div class="listings-container">
-  <!-- Header Section -->
-  <div class="listings-header">
-    <h1 class="listings-title">Discover Places</h1>
-    <p class="listings-subtitle">
-      Find the best restaurants, hotels, and attractions
-    </p>
+<!-- FILTERS SECTION -->
+<div class="filters-section">
+  <div class="search-box">
+    <input
+      type="text"
+      placeholder="Search listings..."
+      [value]="searchQuery()"
+      (input)="onSearchInput($any($event.target).value)"
+    />
   </div>
 
-  <!-- Search and Filter Section -->
-  <div class="search-filter-section">
-    <div class="search-wrapper">
-      <input
-        type="text"
-        class="search-input"
-        placeholder="Search by name, type, or location..."
-        [value]="searchQuery"
-        (input)="onSearchInput($any($event.target).value)"
-      />
-      <span class="search-icon">🔍</span>
-    </div>
+  <div class="filter-controls">
+    <button class="filter-toggle-btn" (click)="toggleFilters()">
+      <span>Filters</span>
+      <span class="filter-icon">{{ showFilters() ? "▲" : "▼" }}</span>
+    </button>
 
-    <!-- Filter Controls -->
-    <div class="filter-controls">
-      <button class="filter-toggle-btn" (click)="showFilters = !showFilters">
-        <span>Filters</span>
-        <span class="filter-icon">{{ showFilters ? "▲" : "▼" }}</span>
+    <div class="sort-controls">
+      <select
+        [value]="sortBy()"
+        (change)="onSortChange($any($event.target).value, sortOrder())"
+      >
+        <option value="reviewScore">Review Score</option>
+        <option value="rating">Rating</option>
+        <option value="price">Price</option>
+      </select>
+
+      <button
+        class="sort-order-btn"
+        (click)="
+          onSortChange(sortBy(), sortOrder() === 'desc' ? 'asc' : 'desc')
+        "
+        [title]="sortOrder() === 'desc' ? 'Descending' : 'Ascending'"
+      >
+        <span class="sort-icon">
+          {{ sortOrder() === "desc" ? "↓" : "↑" }}
+        </span>
       </button>
-
-      <!-- Sort Options -->
-      <div class="sort-controls">
-        <label for="sort-by">Sort by:</label>
-        <select
-          id="sort-by"
-          class="sort-select"
-          [value]="sortBy"
-          (change)="onSortChange($any($event.target).value, sortOrder)"
-        >
-          <option value="reviewScore">Review Score</option>
-          <option value="rating">Rating</option>
-          <option value="price">Price</option>
-        </select>
-        <button
-          class="sort-order-btn"
-          (click)="onSortChange(sortBy, sortOrder === 'desc' ? 'asc' : 'desc')"
-          [title]="sortOrder === 'desc' ? 'Descending' : 'Ascending'"
-        >
-          {{ sortOrder === "desc" ? "↓" : "↑" }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Type Filters (Expandable) -->
-    <div class="type-filters" *ngIf="showFilters">
-      <div class="filters-header">
-        <h3>Filters</h3>
-        <button
-          class="clear-filters-btn"
-          (click)="clearFilters()"
-          *ngIf="selectedTypes.length > 0 || searchQuery || minReviewScore > 0"
-        >
-          Clear All
-        </button>
-      </div>
-
-      <!-- Review Score Filter -->
-      <div class="review-score-filter">
-        <div class="filter-section-header">
-          <h4>Minimum Review Score</h4>
-          <span class="score-badge">{{
-            formatReviewScore(minReviewScore)
-          }}</span>
-        </div>
-        <div class="slider-container">
-          <input
-            type="range"
-            class="score-slider"
-            [min]="0"
-            [max]="getMaxReviewScore()"
-            [step]="0.1"
-            [value]="minReviewScore"
-            (input)="onReviewScoreChange(+$any($event.target).value)"
-          />
-          <div class="slider-labels">
-            <span>0</span>
-            <span>{{ getMaxReviewScore() }}</span>
-          </div>
-        </div>
-        <p class="filter-hint">
-          Review score combines rating quality with review count
-        </p>
-      </div>
-
-      <!-- Type Filters -->
-      <div class="type-filter-section">
-        <h4>Filter by Type</h4>
-        <div class="type-chips">
-          <button
-            *ngFor="let type of availableTypes"
-            class="type-chip"
-            [class.active]="selectedTypes.includes(type)"
-            (click)="toggleTypeFilter(type)"
-          >
-            {{ type }}
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 
-  <!-- Loading State -->
-  <div class="loading-container" *ngIf="loading">
-    <div class="spinner"></div>
-    <p>Loading listings...</p>
-  </div>
+  <!-- Filter Panel -->
+  <div class="filter-panel" *ngIf="showFilters()">
+    <!-- Active Filters -->
+    <div
+      class="active-filters"
+      *ngIf="
+        selectedTypes().length > 0 || searchQuery() || minReviewScore() > 0
+      "
+    >
+      <h3>Active Filters:</h3>
+      <div class="filter-chips">
+        <span class="filter-chip" *ngIf="searchQuery()">
+          Search: "{{ searchQuery() }}"
+        </span>
+        <span class="filter-chip" *ngFor="let type of selectedTypes()">
+          {{ type }}
+        </span>
+        <span class="filter-chip" *ngIf="minReviewScore() > 0">
+          Min Score: {{ formatReviewScore(minReviewScore()) }}
+        </span>
+      </div>
+      <button class="clear-filters-btn" (click)="clearFilters()">
+        Clear All Filters
+      </button>
+    </div>
 
-  <!-- Error State -->
-  <div class="error-container" *ngIf="error && !loading">
-    <div class="error-icon">⚠️</div>
-    <p class="error-message">{{ error }}</p>
-    <button class="retry-btn" (click)="loadListings()">Retry</button>
-  </div>
+    <!-- Review Score Filter -->
+    <div class="filter-group">
+      <label>Minimum Review Score</label>
+      <div class="slider-container">
+        <input
+          type="range"
+          [value]="minReviewScore()"
+          [max]="maxReviewScore()"
+          min="0"
+          step="0.1"
+          (input)="onReviewScoreChange($any($event.target).valueAsNumber)"
+        />
+        <div class="slider-labels">
+          <span>0</span>
+          <span>{{ maxReviewScore() }}</span>
+        </div>
+      </div>
+      <p class="current-value">
+        Current: {{ formatReviewScore(minReviewScore()) }}
+      </p>
+    </div>
 
-  <!-- Listings Grid -->
-  <div class="listings-grid" *ngIf="!loading && !error">
+    <!-- Type Filters -->
+    <div class="filter-group">
+      <label>Type</label>
+      <div class="type-filters">
+        <button
+          *ngFor="let type of availableTypes()"
+          class="type-filter-btn"
+          [class.active]="selectedTypes().includes(type)"
+          (click)="toggleTypeFilter(type)"
+        >
+          {{ type }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING STATE -->
+<div class="loading-container" *ngIf="loading">
+  <div class="spinner"></div>
+  <p>Loading amazing places...</p>
+</div>
+
+<!-- SCROLLABLE LISTINGS CONTAINER -->
+<div class="listings-scroll-container" (scroll)="onScroll()">
+  <!-- LISTINGS GRID -->
+  <div class="listings-grid" *ngIf="!loading">
     <!-- Empty State -->
-    <div class="empty-state" *ngIf="displayedListings.length === 0">
+    <div class="empty-state" *ngIf="displayedListings().length === 0">
       <div class="empty-icon">🔍</div>
-      <h3>No listings found</h3>
-      <p>Try adjusting your filters or search query</p>
-      <button class="clear-btn" (click)="clearFilters()">Clear Filters</button>
+      <h2>No listings found</h2>
+      <p>Try adjusting your filters or search terms</p>
+      <button class="clear-filters-btn" (click)="clearFilters()">
+        Clear Filters
+      </button>
     </div>
 
     <!-- Listing Cards -->
     <div
       class="listing-card"
-      *ngFor="let listing of displayedListings; trackBy: trackByListingId"
+      *ngFor="let listing of displayedListings(); trackBy: trackByListingId"
+      [class.selected]="selectedId === listing.id"
+      [attr.data-listing-id]="listing.id"
+      [routerLink]="['/listing', listing.id]"
+      (click)="onListingClick(listing.id)"
     >
-      <!-- Image Carousel Container -->
-      <div class="card-image-container">
+      <!-- Image Carousel -->
+      <div class="image-container">
         <img
           [src]="getCurrentPhoto(listing)"
           [alt]="listing.name"
-          class="card-image"
           (error)="onImageError($event)"
+          class="listing-image"
         />
 
-        <!-- Carousel Navigation -->
+        <!-- Carousel Controls (if multiple images) -->
         <div class="carousel-controls" *ngIf="hasMultipleImages(listing)">
           <button
             class="carousel-btn prev"
@@ -162,111 +158,78 @@
           >
             ›
           </button>
-        </div>
 
-        <!-- Image Indicators -->
-        <div class="carousel-indicators" *ngIf="hasMultipleImages(listing)">
-          <span
-            *ngFor="let photo of getPhotos(listing); let i = index"
-            class="indicator"
-            [class.active]="i === getCurrentImageIndex(listing)"
-            (click)="goToImage(listing, i, $event)"
-          ></span>
-        </div>
-
-        <!-- Image Counter -->
-        <div class="image-counter" *ngIf="hasMultipleImages(listing)">
-          {{ getCurrentImageIndex(listing) + 1 }} /
-          {{ getPhotos(listing).length }}
-        </div>
-
-        <div class="card-overlay">
-          <span class="card-type-badge">{{ listing.type[0] }}</span>
-          <!-- Review Score Badge -->
-          <span
-            class="review-score-badge"
-            *ngIf="listing.rating && listing.user_ratings_total"
-          >
-          </span>
+          <!-- Dots Indicator -->
+          <div class="carousel-dots">
+            <span
+              *ngFor="let photo of getPhotos(listing); let i = index"
+              class="dot"
+              [class.active]="i === getCurrentImageIndex(listing)"
+              (click)="goToImage(listing, i, $event)"
+            ></span>
+          </div>
         </div>
       </div>
 
-      <!-- Card Content -->
-      <div class="card-content">
-        <h3 class="card-title">{{ listing.name }}</h3>
+      <!-- Listing Info -->
+      <div class="listing-info">
+        <h3 class="listing-name">{{ listing.name }}</h3>
 
-        <!-- Rating with Review Score -->
-        <div class="card-rating" *ngIf="listing.rating">
+        <!-- Rating -->
+        <div class="rating" *ngIf="listing.rating">
           <div class="stars">
             <span
-              *ngFor="let star of getStarRating(listing.rating); let i = index"
+              *ngFor="let filled of getStarRating(listing.rating)"
               class="star"
-              [class.filled]="star"
+              [class.filled]="filled"
             >
               ★
             </span>
           </div>
-          <span class="rating-number">{{
-            (listing.rating ? +listing.rating : 0).toFixed(1)
-          }}</span>
-          <span class="rating-count">({{ listing.user_ratings_total }})</span>
+          <span class="rating-text">
+            {{ listing.rating }} ({{ listing.user_ratings_total || 0 }} reviews)
+          </span>
         </div>
 
-        <!-- Location -->
-        <div
-          class="card-location"
-          *ngIf="listing.vicinity || listing.formatted_address"
-        >
-          <span class="location-icon">📍</span>
-          <span class="location-text">{{
-            listing.vicinity || listing.formatted_address
-          }}</span>
+        <!-- Review Score -->
+        <div class="review-score" *ngIf="listing.rating">
+          <span class="score-label">Review Score:</span>
+          <span class="score-value">
+            {{ formatReviewScore(calculateReviewScore(listing)) }}
+          </span>
         </div>
 
         <!-- Types -->
-        <div class="card-types">
-          <span class="type-tag" *ngFor="let type of listing.type.slice(0, 3)">
+        <div class="listing-types">
+          <span *ngFor="let type of listing.type" class="type-badge">
             {{ type }}
           </span>
-          <span class="type-tag more" *ngIf="listing.type.length > 3">
-            +{{ listing.type.length - 3 }}
-          </span>
         </div>
 
-        <!-- Price -->
-        <div class="card-price" *ngIf="listing.price">
-          <span class="price-label">Price:</span>
-          <span class="price-value">{{ formatPrice(listing.price) }}</span>
-        </div>
-
-        <!-- Footer Actions -->
-        <div class="card-footer">
-          <button
-            class="card-btn primary"
-            [routerLink]="['/listing', listing.id]"
-          >
-            View Details
-          </button>
-          <button class="card-btn secondary" *ngIf="listing.website">
-            <a [href]="listing.website" target="_blank" rel="noopener">
-              Website
-            </a>
-          </button>
-        </div>
+        <!-- Address -->
+        <p
+          class="listing-address"
+          *ngIf="listing.vicinity || listing.formatted_address"
+        >
+          {{ listing.vicinity || listing.formatted_address }}
+        </p>
       </div>
     </div>
   </div>
 
-  <!-- Load More Indicator -->
-  <div class="load-more-container" *ngIf="loadingMore">
+  <!-- LOAD MORE SPINNER -->
+  <div
+    class="load-more-container"
+    *ngIf="loading && displayedListings().length > 0"
+  >
     <div class="spinner small"></div>
     <p>Loading more...</p>
   </div>
 
-  <!-- End of Results -->
+  <!-- END OF RESULTS -->
   <div
-    class="end-message"
-    *ngIf="!hasMoreItems && displayedListings.length > 0"
+    class="end-of-results"
+    *ngIf="!hasMore && displayedListings().length > 0"
   >
     <p>You've reached the end of the listings</p>
   </div>

@@ -1,19 +1,17 @@
 import {
   Component,
-  OnInit,
-  OnDestroy,
-  HostListener,
   Input,
   Output,
   EventEmitter,
+  ChangeDetectionStrategy,
+  signal,
+  computed,
+  HostListener,
 } from '@angular/core';
-import { Subject } from 'rxjs';
-import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { ListingService } from '../../services/listing-service/listing.service';
-import { ListingWithPhotos } from '../../models/listing.model';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { ListingWithPhotos } from '../../models/listing.model';
 
 @Component({
   selector: 'app-listings',
@@ -21,273 +19,139 @@ import { RouterModule } from '@angular/router';
   imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './listings.component.html',
   styleUrls: ['./listings.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ListingsComponent implements OnInit, OnDestroy {
-  allListings: ListingWithPhotos[] = [];
-  filteredListings: ListingWithPhotos[] = [];
-  displayedListings: ListingWithPhotos[] = [];
-
-  showFilters = false;
-  loadingMore = false;
-  error: string | null = null;
-
-  // Infinite scroll
-  private itemsPerLoad = 10;
-  private currentLoadedCount = 0;
-  hasMoreItems = true;
-
-  // Search and filter
-  searchQuery = '';
-  selectedTypes: string[] = [];
-  availableTypes: string[] = [];
-
-  // Sorting
-  sortBy: 'rating' | 'price' | 'reviewScore' = 'reviewScore'; // Added reviewScore
-  sortOrder: 'asc' | 'desc' = 'desc';
-
-  // Review score filtering
-  minReviewScore = 0;
-  showReviewScoreFilter = false;
-
-  // Image carousel tracking
-  currentImageIndices: { [listingId: number]: number } = {};
-
-  private destroy$ = new Subject<void>();
-  private searchSubject$ = new Subject<string>();
-
-  @Input() listings: ListingWithPhotos[] = [];
+export class ListingsComponent {
+  // Inputs from parent container
+  @Input({ required: true }) set listings(value: ListingWithPhotos[]) {
+    this.displayedListings.set(value);
+    this.initializeImageIndices(value);
+  }
   @Input() loading = false;
   @Input() selectedId?: number;
   @Input() hasMore = true;
 
+  // Outputs to parent container
   @Output() listingClick = new EventEmitter<number>();
   @Output() loadMore = new EventEmitter<void>();
+  @Output() searchChange = new EventEmitter<string>();
+  @Output() typeFilterChange = new EventEmitter<string[]>();
+  @Output() sortChange = new EventEmitter<{
+    sortBy: 'rating' | 'price' | 'reviewScore';
+    order: 'asc' | 'desc';
+  }>();
+  @Output() reviewScoreChange = new EventEmitter<number>();
 
-  constructor(private listingService: ListingService) {}
+  // Public signals for template
+  displayedListings = signal<ListingWithPhotos[]>([]);
 
-  ngOnInit(): void {
-    this.loadListings();
-    this.setupSearch();
-  }
+  showFilters = signal(false);
+  searchQuery = signal('');
+  selectedTypes = signal<string[]>([]);
+  minReviewScore = signal(0);
+  sortBy = signal<'rating' | 'price' | 'reviewScore'>('reviewScore');
+  sortOrder = signal<'asc' | 'desc'>('desc');
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
+  // Image carousel tracking
+  currentImageIndices = signal<{ [listingId: number]: number }>({});
 
-  @HostListener('window:scroll', ['$event'])
-  onScroll(): void {
-    if (this.shouldLoadMore()) {
-      this.loadMoreListings();
-    }
-  }
+  // Computed signals for input properties
+  private hasMoreSignal = computed(() => this.hasMore);
+  private loadingSignal = computed(() => this.loading);
 
-  private shouldLoadMore(): boolean {
-    if (!this.hasMoreItems || this.loadingMore || this.loading) {
-      return false;
-    }
-
-    const scrollPosition = window.innerHeight + window.scrollY;
-    const scrollThreshold = document.documentElement.scrollHeight - 500;
-
-    return scrollPosition >= scrollThreshold;
-  }
-
-  loadListings(): void {
-    this.loading = true;
-    this.error = null;
-
-    this.listingService
-      .getListings()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (listings) => {
-          const listingsWithPhotos = listings.filter(
-            (listing) =>
-              listing.photoUrls &&
-              listing.photoUrls.length > 0 &&
-              listing.photoUrls.some((url) => !!url && url.trim() !== '')
-          );
-
-          this.allListings = listingsWithPhotos;
-          this.filteredListings = [...listingsWithPhotos];
-
-          this.initializeImageIndices();
-          this.extractAvailableTypes();
-          this.applySorting();
-          this.resetInfiniteScroll();
-          this.loading = false;
-        },
-        error: (error) => {
-          this.error = 'Failed to load listings. Please try again later.';
-          this.loading = false;
-          console.error('Error loading listings:', error);
-        },
-      });
-  }
-
-  private initializeImageIndices(): void {
-    this.allListings.forEach((listing) => {
-      this.currentImageIndices[listing.id] = 0;
-    });
-  }
-
-  private resetInfiniteScroll(): void {
-    this.currentLoadedCount = 0;
-    this.displayedListings = [];
-    this.hasMoreItems = true;
-    this.loadMoreListings();
-  }
-
-  loadMoreListings(): void {
-    if (!this.hasMoreItems || this.loadingMore) return;
-
-    this.loadingMore = true;
-
-    setTimeout(() => {
-      const nextItems = this.filteredListings.slice(
-        this.currentLoadedCount,
-        this.currentLoadedCount + this.itemsPerLoad
-      );
-
-      this.displayedListings = [...this.displayedListings, ...nextItems];
-      this.currentLoadedCount += nextItems.length;
-
-      if (this.currentLoadedCount >= this.filteredListings.length) {
-        this.hasMoreItems = false;
-      }
-
-      this.loadingMore = false;
-    }, 300);
-  }
-
-  setupSearch(): void {
-    this.searchSubject$
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe((query) => {
-        this.performSearch(query);
-      });
-  }
-
-  onSearchInput(query: string): void {
-    this.searchQuery = query;
-    this.searchSubject$.next(query);
-  }
-
-  performSearch(query: string): void {
-    if (!query.trim()) {
-      this.filteredListings = [...this.allListings];
-    } else {
-      const lowerQuery = query.toLowerCase();
-      this.filteredListings = this.allListings.filter(
-        (listing) =>
-          listing.name.toLowerCase().includes(lowerQuery) ||
-          listing.type.some((t) => t.toLowerCase().includes(lowerQuery)) ||
-          listing.vicinity?.toLowerCase().includes(lowerQuery) ||
-          listing.formatted_address?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    this.applyReviewScoreFilter();
-    this.applySorting();
-    this.resetInfiniteScroll();
-  }
-
-  extractAvailableTypes(): void {
+  // Computed values
+  availableTypes = computed(() => {
     const typesSet = new Set<string>();
-    this.allListings.forEach((listing) => {
+    this.displayedListings().forEach((listing) => {
       listing.type.forEach((type) => typesSet.add(type));
     });
-    this.availableTypes = Array.from(typesSet).sort();
-  }
+    return Array.from(typesSet).sort();
+  });
 
-  toggleTypeFilter(type: string): void {
-    const index = this.selectedTypes.indexOf(type);
-    if (index > -1) {
-      this.selectedTypes.splice(index, 1);
-    } else {
-      this.selectedTypes.push(type);
-    }
-    this.applyFilters();
-  }
-
-  applyFilters(): void {
-    if (this.selectedTypes.length === 0) {
-      this.filteredListings = [...this.allListings];
-    } else {
-      this.filteredListings = this.allListings.filter((listing) =>
-        listing.type.some((type) => this.selectedTypes.includes(type))
-      );
-    }
-    this.performSearch(this.searchQuery);
-  }
-
-  /**
-   * Apply review score filter
-   */
-  applyReviewScoreFilter(): void {
-    if (this.minReviewScore > 0) {
-      this.filteredListings = this.filteredListings.filter(
-        (listing) => this.calculateReviewScore(listing) >= this.minReviewScore
-      );
-    }
-  }
-
-  /**
-   * Handle review score filter change
-   */
-  onReviewScoreChange(value: number): void {
-    this.minReviewScore = value;
-    this.applyFilters();
-  }
-
-  /**
-   * Get maximum review score for slider
-   */
-  getMaxReviewScore(): number {
-    if (this.allListings.length === 0) return 10;
-    const scores = this.allListings.map((listing) =>
+  maxReviewScore = computed(() => {
+    const listings = this.displayedListings();
+    if (listings.length === 0) return 10;
+    const scores = listings.map((listing) =>
       this.calculateReviewScore(listing)
     );
     return Math.ceil(Math.max(...scores));
+  });
+
+  private initializeImageIndices(listings: ListingWithPhotos[]): void {
+    const indices = { ...this.currentImageIndices() };
+    listings.forEach((listing) => {
+      if (!(listing.id in indices)) {
+        indices[listing.id] = 0;
+      }
+    });
+    this.currentImageIndices.set(indices);
   }
 
-  clearFilters(): void {
-    this.selectedTypes = [];
-    this.searchQuery = '';
-    this.minReviewScore = 0;
-    this.filteredListings = [...this.allListings];
-    this.applySorting();
-    this.resetInfiniteScroll();
+  onSearchInput(query: string): void {
+    this.searchQuery.set(query);
+    this.searchChange.emit(query);
+  }
+
+  toggleTypeFilter(type: string): void {
+    const current = this.selectedTypes();
+    const index = current.indexOf(type);
+    const updated =
+      index > -1 ? current.filter((t) => t !== type) : [...current, type];
+
+    this.selectedTypes.set(updated);
+    this.typeFilterChange.emit(updated);
   }
 
   onSortChange(
     sortBy: 'rating' | 'price' | 'reviewScore',
     order: 'asc' | 'desc'
   ): void {
-    this.sortBy = sortBy;
-    this.sortOrder = order;
-    this.applySorting();
-    this.resetInfiniteScroll();
+    this.sortBy.set(sortBy);
+    this.sortOrder.set(order);
+    this.sortChange.emit({ sortBy, order });
   }
 
-  applySorting(): void {
-    if (this.sortBy === 'reviewScore') {
-      // Sort by calculated review score
-      this.filteredListings.sort((a, b) => {
-        const scoreA = this.calculateReviewScore(a);
-        const scoreB = this.calculateReviewScore(b);
-        return this.sortOrder === 'desc' ? scoreB - scoreA : scoreA - scoreB;
-      });
-    } else {
-      // Use existing service sorting for rating and price
-      this.filteredListings = this.listingService.sortListings(
-        this.filteredListings,
-        this.sortBy as 'rating' | 'price',
-        this.sortOrder
-      );
+  onReviewScoreChange(value: number): void {
+    this.minReviewScore.set(value);
+    this.reviewScoreChange.emit(value);
+  }
+
+  clearFilters(): void {
+    this.selectedTypes.set([]);
+    this.searchQuery.set('');
+    this.minReviewScore.set(0);
+
+    this.searchChange.emit('');
+    this.typeFilterChange.emit([]);
+    this.reviewScoreChange.emit(0);
+  }
+
+  toggleFilters(): void {
+    this.showFilters.update((v) => !v);
+  }
+
+  @HostListener('window:scroll')
+  onScroll(): void {
+    if (this.shouldLoadMore()) {
+      this.loadMore.emit();
     }
   }
 
+  private shouldLoadMore(): boolean {
+    if (!this.hasMoreSignal() || this.loadingSignal()) {
+      return false;
+    }
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const scrollThreshold = document.documentElement.scrollHeight - 500;
+
+    return scrollPosition >= scrollThreshold;
+  }
+
+  onListingClick(id: number): void {
+    this.listingClick.emit(id);
+  }
+
+  // Image carousel and utility methods
   getStarRating(rating: number = 0): boolean[] {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -305,7 +169,7 @@ export class ListingsComponent implements OnInit, OnDestroy {
 
   getCurrentPhoto(listing: ListingWithPhotos): string {
     const photos = this.getPhotos(listing);
-    const currentIndex = this.currentImageIndices[listing.id] || 0;
+    const currentIndex = this.currentImageIndices()[listing.id] || 0;
     return photos[currentIndex];
   }
 
@@ -314,8 +178,10 @@ export class ListingsComponent implements OnInit, OnDestroy {
     event.stopPropagation();
 
     const photos = this.getPhotos(listing);
-    const currentIndex = this.currentImageIndices[listing.id] || 0;
-    this.currentImageIndices[listing.id] = (currentIndex + 1) % photos.length;
+    const indices = { ...this.currentImageIndices() };
+    const currentIndex = indices[listing.id] || 0;
+    indices[listing.id] = (currentIndex + 1) % photos.length;
+    this.currentImageIndices.set(indices);
   }
 
   previousImage(listing: ListingWithPhotos, event: Event): void {
@@ -323,20 +189,24 @@ export class ListingsComponent implements OnInit, OnDestroy {
     event.stopPropagation();
 
     const photos = this.getPhotos(listing);
-    const currentIndex = this.currentImageIndices[listing.id] || 0;
-    this.currentImageIndices[listing.id] =
+    const indices = { ...this.currentImageIndices() };
+    const currentIndex = indices[listing.id] || 0;
+    indices[listing.id] =
       currentIndex === 0 ? photos.length - 1 : currentIndex - 1;
+    this.currentImageIndices.set(indices);
   }
 
   goToImage(listing: ListingWithPhotos, index: number, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
 
-    this.currentImageIndices[listing.id] = index;
+    const indices = { ...this.currentImageIndices() };
+    indices[listing.id] = index;
+    this.currentImageIndices.set(indices);
   }
 
   getCurrentImageIndex(listing: ListingWithPhotos): number {
-    return this.currentImageIndices[listing.id] || 0;
+    return this.currentImageIndices()[listing.id] || 0;
   }
 
   hasMultipleImages(listing: ListingWithPhotos): boolean {
@@ -356,20 +226,12 @@ export class ListingsComponent implements OnInit, OnDestroy {
     return listing.id;
   }
 
-  /**
-   * Calculate review score using rating and review count
-   * Formula: rating * log10(1 + reviewCount)
-   * This balances quality (rating) with popularity (review count)
-   */
   calculateReviewScore(listing: ListingWithPhotos): number {
     const rating = listing.rating ?? 0;
     const reviewCount = listing.user_ratings_total ?? 0;
     return rating * Math.log10(1 + reviewCount);
   }
 
-  /**
-   * Format review score for display
-   */
   formatReviewScore(score: number): string {
     return score.toFixed(2);
   }

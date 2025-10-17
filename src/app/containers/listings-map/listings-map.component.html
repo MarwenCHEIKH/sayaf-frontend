@@ -2,19 +2,23 @@
   <!-- Header with location picker -->
   <div class="header">
     <h1>Discover Tunisia</h1>
-    <app-location-picker />
+    <app-location-picker class="location-picker" />
   </div>
 
   <!-- Desktop layout -->
   <div class="desktop-layout" [class.mobile-hidden]="isMobile()">
     <div class="listings-panel">
       <app-listings
-        [listings]="listings()"
+        [listings]="displayedListings()"
         [loading]="loading()"
         [selectedId]="selectedId()"
         [hasMore]="hasMore()"
         (listingClick)="onListingClick($event)"
         (loadMore)="onLoadMore()"
+        (searchChange)="onSearchChange($event)"
+        (typeFilterChange)="onTypeFilterChange($event)"
+        (sortChange)="onSortChange($event)"
+        (reviewScoreChange)="onReviewScoreChange($event)"
       />
     </div>
 
@@ -80,12 +84,16 @@
 
       <div class="panel-full" *ngIf="panelExpanded()">
         <app-listings
-          [listings]="listings()"
+          [listings]="displayedListings()"
           [loading]="loading()"
           [selectedId]="selectedId()"
           [hasMore]="hasMore()"
           (listingClick)="onListingClick($event)"
           (loadMore)="onLoadMore()"
+          (searchChange)="onSearchChange($event)"
+          (typeFilterChange)="onTypeFilterChange($event)"
+          (sortChange)="onSortChange($event)"
+          (reviewScoreChange)="onReviewScoreChange($event)"
         />
       </div>
     </div>
