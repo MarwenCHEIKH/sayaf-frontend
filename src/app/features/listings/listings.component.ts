@@ -50,7 +50,7 @@ export class ListingsComponent {
 
   // UI state
   showFilters = signal(false);
-  searchQuery = signal('');
+  // searchQuery = signal('');
   selectedTypes = signal<string[]>([]);
   minReviewScore = signal(0);
   sortBy = signal<'rating' | 'price' | 'reviewScore'>('reviewScore');
@@ -58,10 +58,6 @@ export class ListingsComponent {
 
   // Image carousel tracking
   currentImageIndices = signal<{ [listingId: number]: number }>({});
-
-  // Computed signals for input properties
-  private hasMoreSignal = computed(() => this.hasMore);
-  private loadingSignal = computed(() => this.loading);
 
   // Computed values
   availableTypes = computed(() => {
@@ -91,10 +87,10 @@ export class ListingsComponent {
     this.currentImageIndices.set(indices);
   }
 
-  onSearchInput(query: string): void {
-    this.searchQuery.set(query);
-    this.searchChange.emit(query);
-  }
+  // onSearchInput(query: string): void {
+  //   this.searchQuery.set(query);
+  //   this.searchChange.emit(query);
+  // }
 
   toggleTypeFilter(type: string): void {
     const current = this.selectedTypes();
@@ -122,7 +118,7 @@ export class ListingsComponent {
 
   clearFilters(): void {
     this.selectedTypes.set([]);
-    this.searchQuery.set('');
+    // this.searchQuery.set('');
     this.minReviewScore.set(0);
 
     this.searchChange.emit('');

@@ -5,6 +5,7 @@ import {
   inject,
   OnInit,
   OnDestroy,
+  computed,
 } from '@angular/core';
 import {
   Router,
@@ -19,8 +20,9 @@ import { HasRoleDirective } from '../../directives/hasRole/has-role.directive';
 import { LanguageSwitcherComponent } from '../../core/i18n/components/language-switcher/language-switcher.component';
 import { Store } from '@ngrx/store';
 import { selectCurrentLanguage } from '../../store/i18n/language.selectors';
-import { Subject, takeUntil } from 'rxjs';
-import { filter } from 'rxjs/operators';
+import { Observable, Subject, takeUntil } from 'rxjs';
+import { filter, map } from 'rxjs/operators';
+import { ModeService } from '../../services/mode/mode.service';
 
 @Component({
   selector: 'app-navbar',
@@ -37,15 +39,20 @@ import { filter } from 'rxjs/operators';
   styleUrl: './navbar.component.scss',
 })
 export class Navbar implements OnInit, OnDestroy {
+  constructor(private modeService: ModeService) {
+    this.isMapMode$ = this.modeService.mode$.pipe(
+      map((mode) => mode === 'map')
+    );
+  }
+
   authService = inject(AuthService);
   router = inject(Router);
   private store = inject(Store);
-
+  isMapMode$!: Observable<boolean>;
   isMobileMenuOpen = false;
   isDropdownOpen = false;
   isHomePage = false;
   currentLang: string | undefined;
-
   private destroy$ = new Subject<void>();
 
   ngOnInit(): void {

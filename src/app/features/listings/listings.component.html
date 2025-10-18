@@ -1,14 +1,5 @@
 <!-- FILTERS SECTION -->
 <div class="filters-section">
-  <div class="search-box">
-    <input
-      type="text"
-      placeholder="Search listings..."
-      [value]="searchQuery()"
-      (input)="onSearchInput($any($event.target).value)"
-    />
-  </div>
-
   <div class="filter-controls">
     <button class="filter-toggle-btn" (click)="toggleFilters()">
       <span>Filters</span>
@@ -44,15 +35,10 @@
     <!-- Active Filters -->
     <div
       class="active-filters"
-      *ngIf="
-        selectedTypes().length > 0 || searchQuery() || minReviewScore() > 0
-      "
+      *ngIf="selectedTypes().length > 0 || minReviewScore() > 0"
     >
       <h3>Active Filters:</h3>
       <div class="filter-chips">
-        <span class="filter-chip" *ngIf="searchQuery()">
-          Search: "{{ searchQuery() }}"
-        </span>
         <span class="filter-chip" *ngFor="let type of selectedTypes()">
           {{ type }}
         </span>

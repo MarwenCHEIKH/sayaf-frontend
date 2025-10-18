@@ -51,7 +51,7 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
   private allListings = signal<ListingWithPhotos[]>([]);
 
   // Filter and sort state (local)
-  private searchQuery = signal('');
+  // private searchQuery = signal('');
   private selectedTypes = signal<string[]>([]);
   private minReviewScore = signal(0);
   private sortBy = signal<'rating' | 'price' | 'reviewScore'>('reviewScore');
@@ -68,17 +68,17 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
   private filteredAndSortedListings = computed(() => {
     let listings = [...this.allListings()];
 
-    // Apply search filter
-    const query = this.searchQuery().trim().toLowerCase();
-    if (query) {
-      listings = listings.filter(
-        (listing) =>
-          listing.name.toLowerCase().includes(query) ||
-          listing.type.some((t) => t.toLowerCase().includes(query)) ||
-          listing.vicinity?.toLowerCase().includes(query) ||
-          listing.formatted_address?.toLowerCase().includes(query)
-      );
-    }
+    // // Apply search filter
+    // const query = this.searchQuery().trim().toLowerCase();
+    // if (query) {
+    //   listings = listings.filter(
+    //     (listing) =>
+    //       listing.name.toLowerCase().includes(query) ||
+    //       listing.type.some((t) => t.toLowerCase().includes(query)) ||
+    //       listing.vicinity?.toLowerCase().includes(query) ||
+    //       listing.formatted_address?.toLowerCase().includes(query)
+    //   );
+    // }
 
     // Apply type filter
     const types = this.selectedTypes();
@@ -201,7 +201,7 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
     this.searchSubject$
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((query) => {
-        this.searchQuery.set(query);
+        // this.searchQuery.set(query);
         this.resetPagination();
       });
   }

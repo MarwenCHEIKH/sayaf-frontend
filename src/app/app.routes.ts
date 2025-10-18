@@ -67,8 +67,8 @@ export const routes: Routes = [
   {
     path: 'map-test',
     loadComponent: () =>
-      import('./containers/listings-map/listings-map.component').then(
-        (m) => m.ListingsMapContainerComponent
+      import('./pages/listings-page/listings-page.component').then(
+        (m) => m.ListingsPageComponent
       ),
   },
 ];

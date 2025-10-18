@@ -1,4 +1,8 @@
-<nav class="navbar" [class.transparent-navbar]="isHomePage">
+<nav
+  class="navbar"
+  [class.transparent-navbar]="isHomePage"
+  *ngIf="!(isMapMode$ | async)"
+>
   <div class="navbar-container">
     <!-- Logo -->
     <a class="logo" routerLink="/" aria-label="TunisiaHub.tn Home">

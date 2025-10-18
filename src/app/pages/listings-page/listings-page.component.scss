@@ -1,0 +1,32 @@
+/* listings-page.component.scss */
+
+.mode-toggle {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  position: relative; /* default for list mode */
+
+  &.map-mode {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: white;
+    color: black;
+    font-weight: bold;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 1000; // on top of the map
+    padding: 0;
+  }
+}
