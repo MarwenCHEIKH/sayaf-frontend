@@ -1,5 +1,164 @@
-<!-- FILTERS SECTION -->
-<div class="filters-section">
+<!-- MOBILE CONTROLS (Map Overlay) -->
+<div class="mobile-map-controls" *ngIf="isMobileView">
+  <button class="control-btn filters-btn" (click)="toggleFilters()">
+    <svg
+      class="btn-icon"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M4 6h16M4 12h16M4 18h16"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+      />
+      <circle cx="8" cy="6" r="1.5" fill="currentColor" />
+      <circle cx="16" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="10" cy="18" r="1.5" fill="currentColor" />
+    </svg>
+    <span>Filters</span>
+    <span
+      class="filter-count"
+      *ngIf="selectedTypes().length > 0 || minReviewScore() > 0"
+    >
+      {{ selectedTypes().length + (minReviewScore() > 0 ? 1 : 0) }}
+    </span>
+  </button>
+
+  <button class="control-btn sort-btn" (click)="toggleSortDropdown()">
+    <span class="btn-icon">⇅</span>
+    <span>Sort</span>
+  </button>
+</div>
+
+<!-- MOBILE FILTER MODAL -->
+<div class="mobile-filter-modal" *ngIf="showFilters() && isMobileView">
+  <div class="modal-overlay" (click)="toggleFilters()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Filters</h3>
+      <button class="close-btn" (click)="toggleFilters()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Active Filters -->
+      <div
+        class="active-filters"
+        *ngIf="selectedTypes().length > 0 || minReviewScore() > 0"
+      >
+        <h4>Active Filters:</h4>
+        <div class="filter-chips">
+          <span class="filter-chip" *ngFor="let type of selectedTypes()">{{
+            type
+          }}</span>
+          <span class="filter-chip" *ngIf="minReviewScore() > 0"
+            >Min Score: {{ formatReviewScore(minReviewScore()) }}</span
+          >
+        </div>
+        <button class="clear-filters-btn" (click)="clearFilters()">
+          Clear All Filters
+        </button>
+      </div>
+
+      <!-- Review Score Filter -->
+      <div class="filter-group">
+        <label>Minimum Review Score</label>
+        <div class="slider-container">
+          <input
+            type="range"
+            [value]="minReviewScore()"
+            [max]="maxReviewScore()"
+            min="0"
+            step="0.1"
+            (input)="onReviewScoreChange($any($event.target).valueAsNumber)"
+          />
+          <div class="slider-labels">
+            <span>0</span>
+            <span>{{ maxReviewScore() }}</span>
+          </div>
+        </div>
+        <p class="current-value">
+          Current: {{ formatReviewScore(minReviewScore()) }}
+        </p>
+      </div>
+
+      <!-- Type Filter -->
+      <div class="filter-group">
+        <label>Type</label>
+        <div class="type-filters">
+          <button
+            *ngFor="let type of availableTypes()"
+            class="type-filter-btn"
+            [class.active]="selectedTypes().includes(type)"
+            (click)="toggleTypeFilter(type)"
+          >
+            {{ type }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="apply-btn" (click)="toggleFilters()">Apply Filters</button>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE SORT DROPDOWN -->
+<div
+  class="mobile-sort-dropdown"
+  *ngIf="showMobileSortDropdown() && isMobileView"
+>
+  <div class="sort-dropdown-content">
+    <div class="sort-header">
+      <h3>Sort by</h3>
+      <button class="close-btn" (click)="toggleSortDropdown()">✕</button>
+    </div>
+    <button
+      class="sort-option"
+      [class.active]="sortBy() === 'reviewScore'"
+      (click)="onSortChange('reviewScore', sortOrder()); toggleSortDropdown()"
+    >
+      Review Score
+    </button>
+    <button
+      class="sort-option"
+      [class.active]="sortBy() === 'rating'"
+      (click)="onSortChange('rating', sortOrder()); toggleSortDropdown()"
+    >
+      Rating
+    </button>
+    <button
+      class="sort-option"
+      [class.active]="sortBy() === 'price'"
+      (click)="onSortChange('price', sortOrder()); toggleSortDropdown()"
+    >
+      Price
+    </button>
+    <div class="sort-order">
+      <button
+        class="order-btn"
+        [class.active]="sortOrder() === 'desc'"
+        (click)="onSortChange(sortBy(), 'desc'); toggleSortDropdown()"
+      >
+        Descending ↓
+      </button>
+      <button
+        class="order-btn"
+        [class.active]="sortOrder() === 'asc'"
+        (click)="onSortChange(sortBy(), 'asc'); toggleSortDropdown()"
+      >
+        Ascending ↑
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- FILTERS SECTION (Desktop Only) -->
+<div class="filters-section" [class.mobile-hidden]="isMobileView">
   <div class="filter-controls">
     <div class="left-controls">
       <button class="filter-toggle-btn" (click)="toggleFilters()">
@@ -145,7 +304,6 @@
 
 <!-- LISTINGS GRID -->
 <div class="listings-grid" *ngIf="!loading || displayedListings().length > 0">
-  <!-- Empty State -->
   <div class="empty-state" *ngIf="displayedListings().length === 0 && !loading">
     <div class="empty-icon">🔍</div>
     <h2>No listings found</h2>
@@ -155,7 +313,6 @@
     </button>
   </div>
 
-  <!-- Listing Cards -->
   <div
     class="listing-card"
     *ngFor="
@@ -167,7 +324,6 @@
     [attr.data-listing-id]="listing.id"
     (click)="onListingClick(listing.id)"
   >
-    <!-- Image Container -->
     <div class="image-container">
       <img
         [src]="getCurrentPhoto(listing)"
@@ -176,7 +332,6 @@
         class="listing-image"
       />
 
-      <!-- Action Buttons (Like & Map) -->
       <div class="action-buttons">
         <button
           class="action-btn like-btn"
@@ -202,7 +357,6 @@
         </button>
       </div>
 
-      <!-- Carousel Controls (if multiple images) -->
       <div class="carousel-controls" *ngIf="hasMultipleImages(listing)">
         <button
           class="carousel-btn prev"
@@ -219,7 +373,6 @@
           ›
         </button>
 
-        <!-- Dots Indicator -->
         <div class="carousel-dots">
           <span
             *ngFor="let photo of getPhotos(listing); let j = index"
@@ -231,13 +384,11 @@
       </div>
     </div>
 
-    <!-- Listing Info -->
     <div class="listing-info">
       <div class="listing-header">
         <h3 class="listing-name">{{ i + 1 }}.{{ listing.name }}</h3>
       </div>
 
-      <!-- Rating -->
       <div class="rating" *ngIf="listing.rating">
         <div class="rating-circles">
           <div
@@ -257,9 +408,7 @@
         </span>
       </div>
 
-      <!-- Details -->
       <div class="listing-details">
-        <!-- Type with icon -->
         <div class="detail-row" *ngIf="listing.type && listing.type.length > 0">
           <svg
             class="icon"
@@ -275,7 +424,6 @@
           <span class="detail-text">{{ listing.type[0] }}</span>
         </div>
 
-        <!-- Opening Hours -->
         <div class="detail-row" *ngIf="listing.opening_hours">
           <svg
             class="icon"
@@ -300,7 +448,6 @@
   </div>
 </div>
 
-<!-- LOAD MORE SPINNER -->
 <div
   class="load-more-container"
   *ngIf="loading && displayedListings().length > 0"
@@ -309,7 +456,6 @@
   <p>Loading more...</p>
 </div>
 
-<!-- END OF RESULTS -->
 <div
   class="end-of-results"
   *ngIf="!hasMore && displayedListings().length > 0 && !loading"

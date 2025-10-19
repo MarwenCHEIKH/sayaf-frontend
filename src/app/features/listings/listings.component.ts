@@ -54,6 +54,9 @@ export class ListingsComponent {
   displayedListings = computed(() => this._listings());
 
   // UI state
+  @Input() isMobileView = false;
+
+  showMobileSortDropdown = signal(false);
   showFilters = signal(false);
   // searchQuery = signal('');
   selectedTypes = signal<string[]>([]);
@@ -102,7 +105,9 @@ export class ListingsComponent {
     this.selectedTypes.set(updated);
     this.typeFilterChange.emit(updated);
   }
-
+  toggleSortDropdown() {
+    this.showMobileSortDropdown.update((v) => !v);
+  }
   onSortChange(
     sortBy: 'rating' | 'price' | 'reviewScore',
     order: 'asc' | 'desc'

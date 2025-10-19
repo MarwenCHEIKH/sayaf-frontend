@@ -3,6 +3,7 @@
   <div class="desktop-layout" [class.mobile-hidden]="isMobile()">
     <div class="listings-panel" (scroll)="onScroll($event)">
       <app-listings
+        [isMobileView]="false"
         [listings]="displayedListings()"
         [loading]="loading()"
         [selectedId]="selectedId()"
@@ -30,9 +31,10 @@
     </div>
   </div>
 
-  <!-- Mobile layout with sliding panel -->
+  <!-- Mobile layout -->
   <div class="mobile-layout" [class.desktop-hidden]="!isMobile()">
-    <div class="mobile-map">
+    <!-- Fixed Map Section (Top 50vh) -->
+    <div class="mobile-map-fixed">
       <app-map
         [markers]="markers()"
         [selectedMarkerId]="selectedId()"
@@ -45,51 +47,21 @@
       />
     </div>
 
-    <div
-      class="mobile-sliding-panel"
-      [class.expanded]="panelExpanded()"
-      (touchstart)="onTouchStart($event)"
-      (touchmove)="onTouchMove($event)"
-      (touchend)="onTouchEnd()"
-    >
-      <div class="panel-handle">
-        <div class="handle-bar"></div>
-      </div>
-
-      <div
-        class="panel-preview"
-        *ngIf="!panelExpanded()"
-        (click)="togglePanel()"
-      >
-        <div class="preview-items">
-          <div
-            class="preview-card"
-            *ngFor="let listing of previewListings(); trackBy: trackById"
-            (click)="onListingClick(listing.id); $event.stopPropagation()"
-          >
-            <img [src]="listing.photoUrls?.[0]" [alt]="listing.name" />
-            <div class="preview-info">
-              <h4>{{ listing.name }}</h4>
-              <span>{{ listing.rating }} ⭐</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel-full" *ngIf="panelExpanded()">
-        <app-listings
-          [listings]="displayedListings()"
-          [loading]="loading()"
-          [selectedId]="selectedId()"
-          [hasMore]="hasMore()"
-          (listingClick)="onListingClick($event)"
-          (loadMore)="onLoadMore()"
-          (searchChange)="onSearchChange($event)"
-          (typeFilterChange)="onTypeFilterChange($event)"
-          (sortChange)="onSortChange($event)"
-          (reviewScoreChange)="onReviewScoreChange($event)"
-        />
-      </div>
+    <!-- Scrollable Content Section (Bottom 50vh) -->
+    <div class="mobile-content-scrollable" (scroll)="onScroll($event)">
+      <app-listings
+        [isMobileView]="true"
+        [listings]="displayedListings()"
+        [loading]="loading()"
+        [selectedId]="selectedId()"
+        [hasMore]="hasMore()"
+        (listingClick)="onListingClick($event)"
+        (loadMore)="onLoadMore()"
+        (searchChange)="onSearchChange($event)"
+        (typeFilterChange)="onTypeFilterChange($event)"
+        (sortChange)="onSortChange($event)"
+        (reviewScoreChange)="onReviewScoreChange($event)"
+      />
     </div>
   </div>
 </div>
