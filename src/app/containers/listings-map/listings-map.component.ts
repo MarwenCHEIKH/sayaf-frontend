@@ -23,7 +23,7 @@ import { MarkerData, MapMoveEvent } from '../../models/map.model';
 import { ListingWithPhotos } from '../../models/listing.model';
 import { MapComponent } from '../../features/map/map.component';
 import { ListingsComponent } from '../../features/listings/listings.component';
-import { LocationPickerComponent } from '../../shared/location-picker/location-picker.component';
+// import { LocationPickerComponent } from '../../shared/location-picker/location-picker.component';
 import { MapService } from '../../services/map-service/map.service';
 import { RouterModule } from '@angular/router';
 
@@ -34,7 +34,7 @@ import { RouterModule } from '@angular/router';
     CommonModule,
     MapComponent,
     ListingsComponent,
-    LocationPickerComponent,
+    // LocationPickerComponent,
     RouterModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

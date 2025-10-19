@@ -18,6 +18,12 @@ import { ListingWithPhotos } from '../../models/listing.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './listings.component.html',
   styleUrls: ['./listings.component.scss'],
+  host: {
+    class: 'listings-component',
+    '[style.display]': '"flex"',
+    '[style.flex-direction]': '"column"',
+    '[style.height]': '"100%"',
+  },
 })
 export class ListingsComponent {
   // Inputs from parent container
@@ -54,6 +60,7 @@ export class ListingsComponent {
   minReviewScore = signal(0);
   sortBy = signal<'rating' | 'price' | 'reviewScore'>('reviewScore');
   sortOrder = signal<'asc' | 'desc'>('desc');
+  showSortDropdown = false;
 
   // Image carousel tracking
   currentImageIndices = signal<{ [listingId: number]: number }>({});
@@ -103,6 +110,14 @@ export class ListingsComponent {
     this.sortBy.set(sortBy);
     this.sortOrder.set(order);
     this.sortChange.emit({ sortBy, order });
+  }
+  getSortLabel(sortBy: string): string {
+    const labels: { [key: string]: string } = {
+      reviewScore: 'Review Score',
+      rating: 'Rating',
+      price: 'Price',
+    };
+    return labels[sortBy] || 'Featured';
   }
 
   onReviewScoreChange(value: number): void {
@@ -197,6 +212,43 @@ export class ListingsComponent {
 
   onImageError(event: any): void {
     event.target.src = 'assets/images/poster.jpg';
+  }
+  // Add these methods to your component
+
+  getFirstType(listing: ListingWithPhotos): string {
+    return listing.type && listing.type.length > 0
+      ? listing.type[0]
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (l) => l.toUpperCase())
+      : 'Place';
+  }
+
+  getOpeningHoursText(listing: ListingWithPhotos): string {
+    if (!listing.opening_hours) return 'Hours not available';
+    return listing.opening_hours.open_now ? 'Opens in 35 min' : 'Closed';
+  }
+
+  onLikeClick(listing: ListingWithPhotos, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    console.log('Liked:', listing.name);
+    // TODO: Implement like functionality
+  }
+
+  onMapClick(listing: ListingWithPhotos, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  getRatingFills(rating: number): number[] {
+    const fills: number[] = [];
+    for (let i = 1; i <= 5; i++) {
+      const diff = rating - (i - 1);
+      if (diff >= 1) fills.push(100); // full circle
+      else if (diff > 0) fills.push(diff * 100); // partial fill
+      else fills.push(0); // empty circle
+    }
+    return fills;
   }
 
   trackByListingId(index: number, listing: ListingWithPhotos): number {

@@ -1,57 +1,102 @@
 <!-- FILTERS SECTION -->
 <div class="filters-section">
   <div class="filter-controls">
-    <button class="filter-toggle-btn" (click)="toggleFilters()">
-      <span>Filters</span>
-      <span class="filter-icon">{{ showFilters() ? "▲" : "▼" }}</span>
-    </button>
+    <div class="left-controls">
+      <button class="filter-toggle-btn" (click)="toggleFilters()">
+        <svg
+          class="filter-icon"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M4 6h16M4 12h16M4 18h16"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+          <circle cx="8" cy="6" r="1.5" fill="currentColor" />
+          <circle cx="16" cy="12" r="1.5" fill="currentColor" />
+          <circle cx="10" cy="18" r="1.5" fill="currentColor" />
+        </svg>
+
+        <span>Filters</span>
+        <span
+          class="filter-count"
+          *ngIf="selectedTypes().length > 0 || minReviewScore() > 0"
+        >
+          {{ selectedTypes().length + (minReviewScore() > 0 ? 1 : 0) }}
+        </span>
+      </button>
+    </div>
 
     <div class="sort-controls">
-      <select
-        [value]="sortBy()"
-        (change)="onSortChange($any($event.target).value, sortOrder())"
-      >
-        <option value="reviewScore">Review Score</option>
-        <option value="rating">Rating</option>
-        <option value="price">Price</option>
-      </select>
-
+      <label>Sort:</label>
+      <div class="sort-dropdown-wrapper">
+        <button
+          class="sort-dropdown"
+          (click)="showSortDropdown = !showSortDropdown"
+        >
+          <span>{{ getSortLabel(sortBy()) }}</span>
+          <span class="dropdown-icon" [class.open]="showSortDropdown">▼</span>
+        </button>
+        <div class="sort-dropdown-menu" *ngIf="showSortDropdown">
+          <button
+            (click)="
+              onSortChange('reviewScore', sortOrder()); showSortDropdown = false
+            "
+          >
+            Review Score
+          </button>
+          <button
+            (click)="
+              onSortChange('rating', sortOrder()); showSortDropdown = false
+            "
+          >
+            Rating
+          </button>
+          <button
+            (click)="
+              onSortChange('price', sortOrder()); showSortDropdown = false
+            "
+          >
+            Price
+          </button>
+        </div>
+      </div>
       <button
-        class="sort-order-btn"
+        class="info-icon"
         (click)="
           onSortChange(sortBy(), sortOrder() === 'desc' ? 'asc' : 'desc')
         "
         [title]="sortOrder() === 'desc' ? 'Descending' : 'Ascending'"
       >
-        <span class="sort-icon">
-          {{ sortOrder() === "desc" ? "↓" : "↑" }}
-        </span>
+        {{ sortOrder() === "desc" ? "↓" : "↑" }}
       </button>
     </div>
   </div>
 
-  <!-- Filter Panel -->
   <div class="filter-panel" *ngIf="showFilters()">
-    <!-- Active Filters -->
     <div
       class="active-filters"
       *ngIf="selectedTypes().length > 0 || minReviewScore() > 0"
     >
       <h3>Active Filters:</h3>
       <div class="filter-chips">
-        <span class="filter-chip" *ngFor="let type of selectedTypes()">
-          {{ type }}
-        </span>
-        <span class="filter-chip" *ngIf="minReviewScore() > 0">
-          Min Score: {{ formatReviewScore(minReviewScore()) }}
-        </span>
+        <span class="filter-chip" *ngFor="let type of selectedTypes()">{{
+          type
+        }}</span>
+        <span class="filter-chip" *ngIf="minReviewScore() > 0"
+          >Min Score: {{ formatReviewScore(minReviewScore()) }}</span
+        >
       </div>
       <button class="clear-filters-btn" (click)="clearFilters()">
         Clear All Filters
       </button>
     </div>
 
-    <!-- Review Score Filter -->
     <div class="filter-group">
       <label>Minimum Review Score</label>
       <div class="slider-container">
@@ -73,7 +118,6 @@
       </p>
     </div>
 
-    <!-- Type Filters -->
     <div class="filter-group">
       <label>Type</label>
       <div class="type-filters">
@@ -91,132 +135,184 @@
 </div>
 
 <!-- LOADING STATE -->
-<div class="loading-container" *ngIf="loading">
+<div
+  class="loading-container"
+  *ngIf="loading && displayedListings().length === 0"
+>
   <div class="spinner"></div>
   <p>Loading amazing places...</p>
 </div>
 
-<!-- SCROLLABLE LISTINGS CONTAINER -->
-<div class="listings-scroll-container">
-  <!-- LISTINGS GRID -->
-  <div class="listings-grid" *ngIf="!loading">
-    <!-- Empty State -->
-    <div class="empty-state" *ngIf="displayedListings().length === 0">
-      <div class="empty-icon">🔍</div>
-      <h2>No listings found</h2>
-      <p>Try adjusting your filters or search terms</p>
-      <button class="clear-filters-btn" (click)="clearFilters()">
-        Clear Filters
-      </button>
-    </div>
+<!-- LISTINGS GRID -->
+<div class="listings-grid" *ngIf="!loading || displayedListings().length > 0">
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="displayedListings().length === 0 && !loading">
+    <div class="empty-icon">🔍</div>
+    <h2>No listings found</h2>
+    <p>Try adjusting your filters or search terms</p>
+    <button class="clear-filters-btn" (click)="clearFilters()">
+      Clear Filters
+    </button>
+  </div>
 
-    <!-- Listing Cards -->
-    <div
-      class="listing-card"
-      *ngFor="let listing of displayedListings(); trackBy: trackByListingId"
-      [class.selected]="selectedId === listing.id"
-      [attr.data-listing-id]="listing.id"
-      [routerLink]="['/listing', listing.id]"
-      (click)="onListingClick(listing.id)"
-    >
-      <!-- Image Carousel -->
-      <div class="image-container">
-        <img
-          [src]="getCurrentPhoto(listing)"
-          [alt]="listing.name"
-          (error)="onImageError($event)"
-          class="listing-image"
-        />
+  <!-- Listing Cards -->
+  <div
+    class="listing-card"
+    *ngFor="
+      let listing of displayedListings();
+      let i = index;
+      trackBy: trackByListingId
+    "
+    [class.selected]="selectedId === listing.id"
+    [attr.data-listing-id]="listing.id"
+    (click)="onListingClick(listing.id)"
+  >
+    <!-- Image Container -->
+    <div class="image-container">
+      <img
+        [src]="getCurrentPhoto(listing)"
+        [alt]="listing.name"
+        (error)="onImageError($event)"
+        class="listing-image"
+      />
 
-        <!-- Carousel Controls (if multiple images) -->
-        <div class="carousel-controls" *ngIf="hasMultipleImages(listing)">
-          <button
-            class="carousel-btn prev"
-            (click)="previousImage(listing, $event)"
-            aria-label="Previous image"
-          >
-            ‹
-          </button>
-          <button
-            class="carousel-btn next"
-            (click)="nextImage(listing, $event)"
-            aria-label="Next image"
-          >
-            ›
-          </button>
-
-          <!-- Dots Indicator -->
-          <div class="carousel-dots">
-            <span
-              *ngFor="let photo of getPhotos(listing); let i = index"
-              class="dot"
-              [class.active]="i === getCurrentImageIndex(listing)"
-              (click)="goToImage(listing, i, $event)"
-            ></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Listing Info -->
-      <div class="listing-info">
-        <h3 class="listing-name">{{ listing.name }}</h3>
-
-        <!-- Rating -->
-        <div class="rating" *ngIf="listing.rating">
-          <div class="stars">
-            <span
-              *ngFor="let filled of getStarRating(listing.rating)"
-              class="star"
-              [class.filled]="filled"
-            >
-              ★
-            </span>
-          </div>
-          <span class="rating-text">
-            {{ listing.rating }} ({{ listing.user_ratings_total || 0 }} reviews)
-          </span>
-        </div>
-
-        <!-- Review Score -->
-        <div class="review-score" *ngIf="listing.rating">
-          <span class="score-label">Review Score:</span>
-          <span class="score-value">
-            {{ formatReviewScore(calculateReviewScore(listing)) }}
-          </span>
-        </div>
-
-        <!-- Types -->
-        <div class="listing-types">
-          <span *ngFor="let type of listing.type" class="type-badge">
-            {{ type }}
-          </span>
-        </div>
-
-        <!-- Address -->
-        <p
-          class="listing-address"
-          *ngIf="listing.vicinity || listing.formatted_address"
+      <!-- Action Buttons (Like & Map) -->
+      <div class="action-buttons">
+        <button
+          class="action-btn like-btn"
+          (click)="onLikeClick(listing, $event)"
+          [class.liked]="false"
+          aria-label="Add to favorites"
         >
-          {{ listing.vicinity || listing.formatted_address }}
-        </p>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            ></path>
+          </svg>
+        </button>
+        <button
+          class="action-btn map-btn"
+          (click)="onMapClick(listing, $event)"
+          aria-label="View on map"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Carousel Controls (if multiple images) -->
+      <div class="carousel-controls" *ngIf="hasMultipleImages(listing)">
+        <button
+          class="carousel-btn prev"
+          (click)="previousImage(listing, $event)"
+          aria-label="Previous image"
+        >
+          ‹
+        </button>
+        <button
+          class="carousel-btn next"
+          (click)="nextImage(listing, $event)"
+          aria-label="Next image"
+        >
+          ›
+        </button>
+
+        <!-- Dots Indicator -->
+        <div class="carousel-dots">
+          <span
+            *ngFor="let photo of getPhotos(listing); let j = index"
+            class="dot"
+            [class.active]="j === getCurrentImageIndex(listing)"
+            (click)="goToImage(listing, j, $event)"
+          ></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Listing Info -->
+    <div class="listing-info">
+      <div class="listing-header">
+        <h3 class="listing-name">{{ i + 1 }}.{{ listing.name }}</h3>
+      </div>
+
+      <!-- Rating -->
+      <div class="rating" *ngIf="listing.rating">
+        <div class="rating-circles">
+          <div
+            class="circle"
+            *ngFor="let fill of getRatingFills(listing.rating)"
+          >
+            <div class="circle-fill" [style.width.%]="fill"></div>
+          </div>
+        </div>
+
+        <span class="rating-score"
+          >{{ listing.rating | number : "1.1-1" }}/5</span
+        >
+
+        <span class="rating-text">
+          ({{ listing.user_ratings_total || 0 }} reviews)
+        </span>
+      </div>
+
+      <!-- Details -->
+      <div class="listing-details">
+        <!-- Type with icon -->
+        <div class="detail-row" *ngIf="listing.type && listing.type.length > 0">
+          <svg
+            class="icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <span class="detail-text">{{ listing.type[0] }}</span>
+        </div>
+
+        <!-- Opening Hours -->
+        <div class="detail-row" *ngIf="listing.opening_hours">
+          <svg
+            class="icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span
+            class="detail-text"
+            [class.open]="listing.opening_hours?.open_now"
+          >
+            {{ getOpeningHoursText(listing) }}
+          </span>
+        </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- LOAD MORE SPINNER -->
-  <div
-    class="load-more-container"
-    *ngIf="loading && displayedListings().length > 0"
-  >
-    <div class="spinner small"></div>
-    <p>Loading more...</p>
-  </div>
+<!-- LOAD MORE SPINNER -->
+<div
+  class="load-more-container"
+  *ngIf="loading && displayedListings().length > 0"
+>
+  <div class="spinner small"></div>
+  <p>Loading more...</p>
+</div>
 
-  <!-- END OF RESULTS -->
-  <div
-    class="end-of-results"
-    *ngIf="!hasMore && displayedListings().length > 0"
-  >
-    <p>You've reached the end of the listings</p>
-  </div>
+<!-- END OF RESULTS -->
+<div
+  class="end-of-results"
+  *ngIf="!hasMore && displayedListings().length > 0 && !loading"
+>
+  <p>You've reached the end of the listings</p>
 </div>

@@ -1,8 +1,13 @@
-// Import shared variables if using separate files
-// Or define them here if standalone
-$primary-red: #d32323;
+// Import shared theme variables
+@use "sass:color";
+
+// Use theme colors to match the app
+$primary-color: #2c3e50;
+$secondary-color: #ff5722;
+$accent-color: #1abc9c;
+$background-color: #ecf0f1;
+$text-color: #2c3e50;
 $border-color: #e6e6e6;
-$text-primary: #2b2b2b;
 $text-secondary: #666;
 $background-light: #f5f5f5;
 
@@ -18,6 +23,10 @@ $radius-xl: 16px;
 
 $transition-fast: 0.2s;
 $transition-normal: 0.3s;
+
+// Panel widths
+$panel-width-desktop: 450px;
+$panel-width-tablet: 400px;
 
 // ===========================
 // MIXINS (Reused)
@@ -61,7 +70,7 @@ $transition-normal: 0.3s;
       margin: 0 0 $spacing-lg 0;
       font-size: 1.75rem;
       font-weight: 700;
-      color: $primary-red;
+      color: $secondary-color;
     }
   }
 
@@ -74,27 +83,30 @@ $transition-normal: 0.3s;
     overflow: hidden;
 
     .listings-panel {
-      width: 35%; // Slightly wider for better readability
-      max-width: 600px;
-      min-width: 400px;
+      width: $panel-width-desktop;
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
       background: white;
       border-right: 1px solid $border-color;
-
-      // THIS is where the scroll happens for infinite scroll
       overflow-y: auto;
       overflow-x: hidden;
       @include scrollbar;
-
-      // Ensure proper height for scrolling
       height: 100%;
+
+      app-listings {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+        flex: 1;
+      }
     }
 
     .map-panel {
       flex: 1;
       position: relative;
-      min-width: 0; // Prevent flex overflow
+      min-width: 0;
     }
   }
 
@@ -103,137 +115,31 @@ $transition-normal: 0.3s;
   // ===========================
   .mobile-layout {
     display: none;
-    position: relative;
+    flex-direction: column;
     flex: 1;
     overflow: hidden;
 
     .mobile-map {
-      flex: 1;
-      position: relative;
       width: 100%;
-      height: 100%;
+      height: 50vh;
+      flex-shrink: 0;
+      position: relative;
     }
 
-    .mobile-sliding-panel {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
+    .mobile-list {
+      flex: 1;
+      width: 100%;
       background: white;
-      border-radius: $radius-xl $radius-xl 0 0;
-      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-      transition: transform $transition-normal ease-out;
-      z-index: 100;
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      @include scrollbar;
 
-      &:not(.expanded) {
-        height: 200px; // Slightly taller preview
-      }
-
-      &.expanded {
-        height: 90vh;
-
-        .panel-preview {
-          display: none;
-        }
-
-        .panel-full {
-          display: flex;
-        }
-      }
-
-      .panel-handle {
-        padding: 12px 0;
+      app-listings {
         display: flex;
-        justify-content: center;
-        cursor: pointer;
-        flex-shrink: 0;
-
-        .handle-bar {
-          width: 40px;
-          height: 4px;
-          background: #d0d0d0;
-          border-radius: 2px;
-          transition: background $transition-fast;
-        }
-
-        &:hover .handle-bar {
-          background: #a0a0a0;
-        }
-      }
-
-      .panel-preview {
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding: 0 $spacing-lg $spacing-lg;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
         flex: 1;
-        @include scrollbar;
-
-        .preview-items {
-          display: flex;
-          gap: $spacing-lg;
-          padding-bottom: $spacing-sm;
-
-          .preview-card {
-            flex: 0 0 280px;
-            background: white;
-            border: 1px solid $border-color;
-            border-radius: $radius-lg;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            transition: transform $transition-fast;
-
-            &:hover {
-              transform: translateY(-2px);
-              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            }
-
-            img {
-              width: 100%;
-              height: 120px;
-              object-fit: cover;
-            }
-
-            .preview-info {
-              padding: $spacing-md;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-
-              h4 {
-                margin: 0;
-                font-size: 0.9rem;
-                font-weight: 600;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                flex: 1;
-                color: $text-primary;
-              }
-
-              span {
-                font-size: 0.85rem;
-                color: $text-secondary;
-                white-space: nowrap;
-                margin-left: $spacing-sm;
-              }
-            }
-          }
-        }
-      }
-
-      .panel-full {
-        display: none;
-        flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
-        @include scrollbar;
-
-        // Ensure proper infinite scroll in mobile expanded view
-        // The scroll happens on panel-full, not on inner elements
       }
     }
   }
@@ -248,7 +154,15 @@ $transition-normal: 0.3s;
 
     .mobile-layout {
       display: flex;
-      flex-direction: column;
+    }
+
+    .header {
+      padding: $spacing-md $spacing-lg;
+
+      h1 {
+        font-size: 1.5rem;
+        margin: 0 0 $spacing-md 0;
+      }
     }
   }
 
@@ -262,11 +176,17 @@ $transition-normal: 0.3s;
     }
   }
 
-  // Adjust desktop panel width for smaller desktop screens
+  // Tablet adjustments
   @media (min-width: 769px) and (max-width: 1024px) {
     .desktop-layout .listings-panel {
-      width: 40%;
-      min-width: 350px;
+      width: $panel-width-tablet;
+    }
+  }
+
+  // Small desktop adjustments
+  @media (min-width: 1025px) and (max-width: 1280px) {
+    .desktop-layout .listings-panel {
+      width: $panel-width-desktop;
     }
   }
 }

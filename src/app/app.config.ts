@@ -47,13 +47,7 @@ export class PlatformAwareTranslateLoader implements TranslateLoader {
 
   getTranslation(lang: string): Observable<any> {
     if (isPlatformBrowser(this.platformId)) {
-      return this.http.get(`/assets/i18n/${lang}.json`).pipe(
-        tap({
-          next: () => console.log(`[TranslateLoader] ${lang}.json loaded ✅`),
-          error: (err) =>
-            console.error(`[TranslateLoader] ${lang}.json failed ❌`, err),
-        })
-      );
+      return this.http.get(`/assets/i18n/${lang}.json`).pipe();
     }
 
     if (isPlatformServer(this.platformId) && fs) {
