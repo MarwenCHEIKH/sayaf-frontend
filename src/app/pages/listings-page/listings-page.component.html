@@ -1,12 +1,12 @@
-<button
-  class="mode-toggle"
-  [ngClass]="{ 'map-mode': (mode$ | async) === 'map' }"
-  (click)="toggleMode()"
->
-  {{ (mode$ | async) === "map" ? "✕" : "Map Mode" }}
-</button>
+<div [class.fullscreen]="isMapMode">
+  <button
+    (click)="toggleMode()"
+    class="mode-toggle"
+    [class.map-mode]="isMapMode"
+  >
+    {{ isMapMode ? "✕" : "Map Mode" }}
+  </button>
 
-<app-listings-map-container
-  *ngIf="(mode$ | async) === 'map'"
-></app-listings-map-container>
-<app-list-listings *ngIf="(mode$ | async) === 'list'"></app-list-listings>
+  <app-listings-map-container *ngIf="isMapMode"></app-listings-map-container>
+  <app-list-listings *ngIf="!isMapMode"></app-list-listings>
+</div>

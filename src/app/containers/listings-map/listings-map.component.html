@@ -1,7 +1,7 @@
 <div class="listings-map-container">
   <!-- Desktop layout -->
   <div class="desktop-layout" [class.mobile-hidden]="isMobile()">
-    <div class="listings-panel">
+    <div class="listings-panel" (scroll)="onScroll($event)">
       <app-listings
         [listings]="displayedListings()"
         [loading]="loading()"

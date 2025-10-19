@@ -41,7 +41,7 @@ import { RouterModule } from '@angular/router';
   templateUrl: './listings-map.component.html',
   styleUrls: ['./listings-map.component.scss'],
 })
-export class ListingsMapContainerComponent implements OnInit, OnDestroy {
+export class ListingsMapComponent implements OnInit, OnDestroy {
   private store = inject(Store);
   private mapService = inject(MapService);
   private destroy$ = new Subject<void>();
@@ -67,18 +67,6 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
   // Computed: filtered and sorted listings (all matches, not paginated)
   private filteredAndSortedListings = computed(() => {
     let listings = [...this.allListings()];
-
-    // // Apply search filter
-    // const query = this.searchQuery().trim().toLowerCase();
-    // if (query) {
-    //   listings = listings.filter(
-    //     (listing) =>
-    //       listing.name.toLowerCase().includes(query) ||
-    //       listing.type.some((t) => t.toLowerCase().includes(query)) ||
-    //       listing.vicinity?.toLowerCase().includes(query) ||
-    //       listing.formatted_address?.toLowerCase().includes(query)
-    //   );
-    // }
 
     // Apply type filter
     const types = this.selectedTypes();
@@ -162,6 +150,20 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
     return displayed < total;
   });
 
+  onScroll(event: Event): void {
+    const container = event.target as HTMLElement;
+    const scrollPosition = container.scrollTop + container.clientHeight;
+    const scrollThreshold = container.scrollHeight - 200; // 200px before bottom
+
+    if (
+      this.hasMore() &&
+      !this.loading() &&
+      scrollPosition >= scrollThreshold
+    ) {
+      this.onLoadMore();
+    }
+  }
+
   // Store data
   loading = this.store.selectSignal(selectListingsLoading);
   selectedId = this.store.selectSignal(selectSelectedListingId);
@@ -185,7 +187,6 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
       window.addEventListener('resize', this.resizeListener);
     }
 
-    this.setupSearchDebounce();
     this.subscribeToStore();
   }
 
@@ -197,15 +198,6 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private setupSearchDebounce(): void {
-    this.searchSubject$
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe((query) => {
-        // this.searchQuery.set(query);
-        this.resetPagination();
-      });
-  }
-
   private subscribeToStore(): void {
     // Subscribe to location changes
     this.store
@@ -213,7 +205,10 @@ export class ListingsMapContainerComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe((location) => {
         if (!location) return;
-        this.mapCenter.set({ lat: location.lat, lng: location.lng });
+        this.mapCenter.set({ lat: 36.8065, lng: 10.1815 });
+        this.store.dispatch(
+          ListingsActions.loadListings({ filters: {}, reset: true })
+        );
         this.store.dispatch(
           ListingsActions.loadListings({
             filters: { location: { lat: location.lat, lng: location.lng } },

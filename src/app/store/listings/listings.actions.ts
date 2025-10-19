@@ -14,8 +14,6 @@ export const ListingsActions = createActionGroup({
     }>(),
     'Load Listings Success': props<{
       listings: Listing[];
-      total: number;
-      append: boolean;
     }>(),
     'Load Listings Failure': props<{ error: string }>(),
 

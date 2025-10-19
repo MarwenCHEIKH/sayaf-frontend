@@ -17,15 +17,12 @@ export const listingsReducer = createReducer(
     })
   ),
 
-  on(
-    ListingsActions.loadListingsSuccess,
-    (state, { listings, total, append }) => ({
-      ...state,
-      items: append ? [...state.items, ...listings] : listings,
-      total,
-      loading: false,
-    })
-  ),
+  on(ListingsActions.loadListingsSuccess, (state, { listings }) => ({
+    ...state,
+    items: listings,
+    loading: false,
+    error: null,
+  })),
 
   on(
     ListingsActions.loadListingsFailure,

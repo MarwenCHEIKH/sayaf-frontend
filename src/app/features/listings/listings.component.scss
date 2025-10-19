@@ -1,63 +1,121 @@
-// Variables
+// ===========================
+// VARIABLES
+// ===========================
 $primary-red: #d32323;
 $border-color: #e6e6e6;
 $text-primary: #2b2b2b;
 $text-secondary: #666;
 $star-filled: #ffc107;
 $star-empty: #e0e0e0;
+$background-light: #f5f5f5;
 
-// Filters Section
+// Spacing
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-md: 0.75rem;
+$spacing-lg: 1rem;
+$spacing-xl: 1.5rem;
+$spacing-2xl: 2rem;
+$spacing-3xl: 3rem;
+
+// Border Radius
+$radius-sm: 3px;
+$radius-md: 4px;
+$radius-lg: 8px;
+$radius-xl: 16px;
+$radius-full: 50%;
+
+// Transitions
+$transition-fast: 0.2s;
+$transition-normal: 0.3s;
+
+// ===========================
+// MIXINS
+// ===========================
+@mixin button-base {
+  cursor: pointer;
+  transition: all $transition-fast;
+  border: 1px solid $border-color;
+  font-weight: 500;
+
+  &:hover {
+    background: #f8f8f8;
+  }
+}
+
+@mixin spinner($size: 50px, $border-width: 4px) {
+  width: $size;
+  height: $size;
+  border: $border-width solid #f3f3f3;
+  border-top: $border-width solid $primary-red;
+  border-radius: $radius-full;
+  animation: spin 1s linear infinite;
+}
+
+@mixin scrollbar {
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: $radius-md;
+
+    &:hover {
+      background: #555;
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ===========================
+// FILTERS SECTION
+// ===========================
 .filters-section {
   position: sticky;
   top: 0;
   background: white;
   border-bottom: 1px solid $border-color;
   z-index: 50;
-  padding: 1rem;
-
-  .search-box {
-    margin-bottom: 1rem;
-
-    input {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      border: 1px solid $border-color;
-      border-radius: 4px;
-      font-size: 0.95rem;
-      transition: border-color 0.2s;
-
-      &:focus {
-        outline: none;
-        border-color: $primary-red;
-      }
-
-      &::placeholder {
-        color: #999;
-      }
-    }
-  }
+  padding: $spacing-lg;
 
   .filter-controls {
     display: flex;
-    gap: 1rem;
+    gap: $spacing-lg;
     align-items: center;
 
     .filter-toggle-btn {
+      @include button-base;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
+      gap: $spacing-sm;
+      padding: $spacing-sm $spacing-lg;
       background: white;
-      border: 1px solid $border-color;
-      border-radius: 4px;
-      cursor: pointer;
+      border-radius: $radius-md;
       font-size: 0.9rem;
-      font-weight: 500;
-      transition: all 0.2s;
-
-      &:hover {
-        background: #f8f8f8;
-      }
 
       .filter-icon {
         font-size: 0.75rem;
@@ -66,13 +124,13 @@ $star-empty: #e0e0e0;
 
     .sort-controls {
       display: flex;
-      gap: 0.5rem;
+      gap: $spacing-sm;
       margin-left: auto;
 
       select {
-        padding: 0.5rem 1rem;
+        padding: $spacing-sm $spacing-lg;
         border: 1px solid $border-color;
-        border-radius: 4px;
+        border-radius: $radius-md;
         font-size: 0.9rem;
         cursor: pointer;
         background: white;
@@ -84,16 +142,10 @@ $star-empty: #e0e0e0;
       }
 
       .sort-order-btn {
-        padding: 0.5rem 0.75rem;
+        @include button-base;
+        padding: $spacing-sm $spacing-md;
         background: white;
-        border: 1px solid $border-color;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
-
-        &:hover {
-          background: #f8f8f8;
-        }
+        border-radius: $radius-md;
 
         .sort-icon {
           font-size: 1rem;
@@ -103,30 +155,19 @@ $star-empty: #e0e0e0;
   }
 
   .filter-panel {
-    margin-top: 1rem;
-    padding-top: 1rem;
+    margin-top: $spacing-lg;
+    padding-top: $spacing-lg;
     border-top: 1px solid $border-color;
-    animation: slideDown 0.3s ease-out;
-
-    @keyframes slideDown {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
+    animation: slideDown $transition-normal ease-out;
 
     .active-filters {
-      margin-bottom: 1.5rem;
-      padding: 1rem;
+      margin-bottom: $spacing-xl;
+      padding: $spacing-lg;
       background: #f9f9f9;
-      border-radius: 4px;
+      border-radius: $radius-md;
 
       h3 {
-        margin: 0 0 0.75rem 0;
+        margin: 0 0 $spacing-md 0;
         font-size: 0.9rem;
         font-weight: 600;
         color: $text-secondary;
@@ -135,29 +176,29 @@ $star-empty: #e0e0e0;
       .filter-chips {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
+        gap: $spacing-sm;
+        margin-bottom: $spacing-md;
 
         .filter-chip {
-          padding: 0.35rem 0.75rem;
+          padding: 0.35rem $spacing-md;
           background: white;
           border: 1px solid $border-color;
-          border-radius: 16px;
+          border-radius: $radius-xl;
           font-size: 0.85rem;
           color: $text-primary;
         }
       }
 
       .clear-filters-btn {
-        padding: 0.4rem 0.75rem;
+        padding: 0.4rem $spacing-md;
         background: transparent;
         border: 1px solid $primary-red;
         color: $primary-red;
-        border-radius: 4px;
+        border-radius: $radius-md;
         font-size: 0.85rem;
         font-weight: 500;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all $transition-fast;
 
         &:hover {
           background: $primary-red;
@@ -167,23 +208,23 @@ $star-empty: #e0e0e0;
     }
 
     .filter-group {
-      margin-bottom: 1.5rem;
+      margin-bottom: $spacing-xl;
 
       label {
         display: block;
-        margin-bottom: 0.75rem;
+        margin-bottom: $spacing-md;
         font-size: 0.9rem;
         font-weight: 600;
         color: $text-primary;
       }
 
       .slider-container {
-        margin-bottom: 0.5rem;
+        margin-bottom: $spacing-sm;
 
         input[type="range"] {
           width: 100%;
           height: 6px;
-          border-radius: 3px;
+          border-radius: $radius-sm;
           background: #e0e0e0;
           outline: none;
           -webkit-appearance: none;
@@ -193,7 +234,7 @@ $star-empty: #e0e0e0;
             appearance: none;
             width: 18px;
             height: 18px;
-            border-radius: 50%;
+            border-radius: $radius-full;
             background: $primary-red;
             cursor: pointer;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -202,7 +243,7 @@ $star-empty: #e0e0e0;
           &::-moz-range-thumb {
             width: 18px;
             height: 18px;
-            border-radius: 50%;
+            border-radius: $radius-full;
             background: $primary-red;
             cursor: pointer;
             border: none;
@@ -215,7 +256,7 @@ $star-empty: #e0e0e0;
           justify-content: space-between;
           font-size: 0.75rem;
           color: $text-secondary;
-          margin-top: 0.25rem;
+          margin-top: $spacing-xs;
         }
       }
 
@@ -228,16 +269,16 @@ $star-empty: #e0e0e0;
       .type-filters {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem;
+        gap: $spacing-sm;
 
         .type-filter-btn {
-          padding: 0.5rem 1rem;
+          padding: $spacing-sm $spacing-lg;
           background: white;
           border: 1px solid $border-color;
           border-radius: 20px;
           font-size: 0.85rem;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all $transition-fast;
 
           &:hover {
             border-color: $primary-red;
@@ -254,80 +295,62 @@ $star-empty: #e0e0e0;
   }
 }
 
-// Loading Container
-.loading-container {
+// ===========================
+// LISTINGS CONTAINER (FIXED FOR INFINITE SCROLL)
+// ===========================
+.listings-scroll-container {
+  // Remove overflow from here - it should be on parent
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 1rem;
+  min-height: 0;
 
-  .spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid $primary-red;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  p {
-    margin-top: 1rem;
-    color: $text-secondary;
-    font-size: 0.95rem;
-  }
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
+  // This container should NOT scroll
+  // The scroll happens at the parent level (.listings-panel)
+  overflow: visible;
 }
-.scroll-container {
-  height: 500px; /* fixed height */
-  overflow-y: auto; /* enable scrolling */
-}
-// Listings Grid
+
+// ===========================
+// LISTINGS GRID
+// ===========================
 .listings-grid {
-  padding: 1rem;
+  padding: $spacing-lg;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: $spacing-lg;
+  flex: 1;
 
   // Empty State
   .empty-state {
     text-align: center;
-    padding: 3rem 1rem;
+    padding: $spacing-3xl $spacing-lg;
 
     .empty-icon {
       font-size: 3rem;
-      margin-bottom: 1rem;
+      margin-bottom: $spacing-lg;
     }
 
     h2 {
-      margin: 0 0 0.5rem 0;
+      margin: 0 0 $spacing-sm 0;
       font-size: 1.5rem;
       color: $text-primary;
     }
 
     p {
-      margin: 0 0 1.5rem 0;
+      margin: 0 0 $spacing-xl 0;
       color: $text-secondary;
     }
 
     .clear-filters-btn {
-      padding: 0.75rem 1.5rem;
+      padding: $spacing-md $spacing-xl;
       background: $primary-red;
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: $radius-md;
       font-size: 1rem;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background $transition-fast;
 
       &:hover {
         background: darken($primary-red, 10%);
@@ -335,17 +358,18 @@ $star-empty: #e0e0e0;
     }
   }
 
-  // Listing Card
+  // Listing Card - Updated to match reference design
   .listing-card {
     background: white;
     border: 1px solid $border-color;
-    border-radius: 8px;
+    border-radius: $radius-lg;
     overflow: hidden;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all $transition-fast;
     text-decoration: none;
     color: inherit;
-    display: block;
+    display: flex;
+    height: 200px; // Fixed height like reference
 
     &:hover {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -359,8 +383,8 @@ $star-empty: #e0e0e0;
 
     .image-container {
       position: relative;
-      width: 100%;
-      height: 200px;
+      width: 280px; // Fixed width like reference
+      flex-shrink: 0;
       background: #f0f0f0;
       overflow: hidden;
 
@@ -368,13 +392,14 @@ $star-empty: #e0e0e0;
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transition: transform 0.3s;
+        transition: transform $transition-normal;
       }
 
       &:hover .listing-image {
         transform: scale(1.05);
       }
 
+      // Carousel Controls
       .carousel-controls {
         position: absolute;
         top: 0;
@@ -384,14 +409,14 @@ $star-empty: #e0e0e0;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 0.5rem;
+        padding: 0 $spacing-sm;
 
         .carousel-btn {
           width: 32px;
           height: 32px;
           background: rgba(255, 255, 255, 0.9);
           border: none;
-          border-radius: 50%;
+          border-radius: $radius-full;
           font-size: 1.5rem;
           line-height: 1;
           cursor: pointer;
@@ -399,7 +424,7 @@ $star-empty: #e0e0e0;
           align-items: center;
           justify-content: center;
           opacity: 0;
-          transition: opacity 0.2s;
+          transition: opacity $transition-fast;
           z-index: 2;
 
           &:hover {
@@ -409,7 +434,7 @@ $star-empty: #e0e0e0;
 
         .carousel-dots {
           position: absolute;
-          bottom: 0.5rem;
+          bottom: $spacing-sm;
           left: 50%;
           transform: translateX(-50%);
           display: flex;
@@ -420,9 +445,9 @@ $star-empty: #e0e0e0;
             width: 6px;
             height: 6px;
             background: rgba(255, 255, 255, 0.6);
-            border-radius: 50%;
+            border-radius: $radius-full;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all $transition-fast;
 
             &.active {
               background: white;
@@ -440,31 +465,63 @@ $star-empty: #e0e0e0;
       &:hover .carousel-controls .carousel-btn {
         opacity: 1;
       }
+
+      // Year badge (like reference)
+      .year-badge {
+        position: absolute;
+        bottom: $spacing-sm;
+        left: $spacing-sm;
+        background: rgba(0, 200, 0, 0.9);
+        color: white;
+        padding: $spacing-xs $spacing-sm;
+        border-radius: $radius-sm;
+        font-size: 0.75rem;
+        font-weight: 600;
+        z-index: 2;
+      }
     }
 
     .listing-info {
-      padding: 1rem;
+      padding: $spacing-lg;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex: 1;
+      min-width: 0; // Prevent text overflow issues
 
-      .listing-name {
-        margin: 0 0 0.75rem 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: $text-primary;
-        line-height: 1.3;
+      .listing-header {
+        .listing-number {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: $text-primary;
+          margin-bottom: $spacing-xs;
+        }
+
+        .listing-name {
+          margin: 0 0 $spacing-sm 0;
+          font-size: 1rem;
+          font-weight: 600;
+          color: $text-primary;
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
       }
 
       .rating {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
+        gap: $spacing-sm;
+        margin-bottom: $spacing-sm;
 
         .stars {
           display: flex;
           gap: 2px;
 
           .star {
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: $star-empty;
 
             &.filled {
@@ -479,82 +536,102 @@ $star-empty: #e0e0e0;
         }
       }
 
-      .review-score {
+      .listing-details {
         display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
-        font-size: 0.9rem;
+        flex-direction: column;
+        gap: $spacing-xs;
+        font-size: 0.85rem;
+        color: $text-secondary;
 
-        .score-label {
-          color: $text-secondary;
-        }
+        .detail-row {
+          display: flex;
+          align-items: center;
+          gap: $spacing-xs;
 
-        .score-value {
-          font-weight: 600;
-          color: $text-primary;
+          .icon {
+            font-size: 0.75rem;
+          }
         }
       }
 
       .listing-types {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.35rem;
-        margin-bottom: 0.75rem;
+        gap: $spacing-xs;
+        margin-top: $spacing-sm;
 
         .type-badge {
-          padding: 0.25rem 0.6rem;
-          background: #f5f5f5;
+          padding: $spacing-xs $spacing-sm;
+          background: $background-light;
           color: $text-secondary;
-          font-size: 0.75rem;
-          border-radius: 3px;
+          font-size: 0.7rem;
+          border-radius: $radius-sm;
           font-weight: 500;
         }
       }
 
       .listing-address {
-        margin: 0;
-        font-size: 0.85rem;
+        margin: $spacing-sm 0 0 0;
+        font-size: 0.8rem;
         color: $text-secondary;
         line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
     }
   }
 }
 
-// Load More Container
+// ===========================
+// LOADING STATES
+// ===========================
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-3xl $spacing-lg;
+
+  .spinner {
+    @include spinner(50px, 4px);
+  }
+
+  p {
+    margin-top: $spacing-lg;
+    color: $text-secondary;
+    font-size: 0.95rem;
+  }
+}
+
 .load-more-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem 1rem;
+  padding: $spacing-2xl $spacing-lg;
 
   .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid $primary-red;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+    @include spinner(40px, 3px);
 
     &.small {
-      width: 30px;
-      height: 30px;
-      border-width: 3px;
+      @include spinner(30px, 3px);
     }
   }
 
   p {
-    margin-top: 0.75rem;
+    margin-top: $spacing-md;
     color: $text-secondary;
     font-size: 0.9rem;
   }
 }
 
-// End of Results
+// ===========================
+// END OF RESULTS
+// ===========================
 .end-of-results {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: $spacing-2xl $spacing-lg;
   color: $text-secondary;
   font-size: 0.9rem;
   border-top: 1px solid $border-color;
@@ -564,12 +641,22 @@ $star-empty: #e0e0e0;
   }
 }
 
-// Responsive Design
+// ===========================
+// RESPONSIVE DESIGN
+// ===========================
 @media (max-width: 768px) {
   .listings-grid {
     .listing-card {
+      flex-direction: column;
+      height: auto;
+
       .image-container {
-        height: 180px;
+        width: 100%;
+        height: 200px;
+      }
+
+      .listing-info {
+        padding: $spacing-md;
       }
     }
   }
@@ -581,8 +668,19 @@ $star-empty: #e0e0e0;
       .sort-controls {
         margin-left: 0;
         width: 100%;
-        margin-top: 0.5rem;
+        margin-top: $spacing-sm;
       }
     }
+  }
+}
+
+@media (max-width: 480px) {
+  .listings-grid {
+    padding: $spacing-sm;
+    gap: $spacing-sm;
+  }
+
+  .filters-section {
+    padding: $spacing-sm;
   }
 }

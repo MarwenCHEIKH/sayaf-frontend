@@ -1,88 +1,117 @@
+// Import shared variables if using separate files
+// Or define them here if standalone
+$primary-red: #d32323;
+$border-color: #e6e6e6;
+$text-primary: #2b2b2b;
+$text-secondary: #666;
+$background-light: #f5f5f5;
+
+$spacing-sm: 0.5rem;
+$spacing-md: 0.75rem;
+$spacing-lg: 1rem;
+$spacing-xl: 1.5rem;
+$spacing-2xl: 2rem;
+
+$radius-md: 4px;
+$radius-lg: 8px;
+$radius-xl: 16px;
+
+$transition-fast: 0.2s;
+$transition-normal: 0.3s;
+
+// ===========================
+// MIXINS (Reused)
+// ===========================
+@mixin scrollbar {
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: $radius-md;
+
+    &:hover {
+      background: #555;
+    }
+  }
+}
+
+// ===========================
+// MAIN MAP CONTAINER
+// ===========================
 .listings-map-container {
   width: 100%;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: $background-light;
 
   .header {
     background: white;
-    padding: 1rem 2rem;
+    padding: $spacing-lg $spacing-2xl;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     z-index: 10;
 
     h1 {
-      margin: 0 0 1rem 0;
+      margin: 0 0 $spacing-lg 0;
       font-size: 1.75rem;
       font-weight: 700;
-      color: #d32323;
+      color: $primary-red;
     }
   }
 
-  // Desktop Layout
+  // ===========================
+  // DESKTOP LAYOUT
+  // ===========================
   .desktop-layout {
     display: flex;
     flex: 1;
     overflow: hidden;
 
-    &.mobile-hidden {
-      @media (max-width: 768px) {
-        display: none;
-      }
-    }
-
     .listings-panel {
-      width: 30%;
-      max-width: 800px;
-      overflow-y: auto;
+      width: 35%; // Slightly wider for better readability
+      max-width: 600px;
+      min-width: 400px;
+      display: flex;
+      flex-direction: column;
       background: white;
-      border-right: 1px solid #e6e6e6;
+      border-right: 1px solid $border-color;
 
-      &::-webkit-scrollbar {
-        width: 8px;
-      }
+      // THIS is where the scroll happens for infinite scroll
+      overflow-y: auto;
+      overflow-x: hidden;
+      @include scrollbar;
 
-      &::-webkit-scrollbar-track {
-        background: #f1f1f1;
-      }
-
-      &::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 4px;
-
-        &:hover {
-          background: #555;
-        }
-      }
+      // Ensure proper height for scrolling
+      height: 100%;
     }
 
     .map-panel {
       flex: 1;
       position: relative;
+      min-width: 0; // Prevent flex overflow
     }
   }
 
-  // Mobile Layout
+  // ===========================
+  // MOBILE LAYOUT
+  // ===========================
   .mobile-layout {
     display: none;
     position: relative;
     flex: 1;
-
-    &.desktop-hidden {
-      @media (max-width: 768px) {
-        display: flex;
-        flex-direction: column;
-      }
-    }
-
-    @media (max-width: 768px) {
-      display: flex;
-      flex-direction: column;
-    }
+    overflow: hidden;
 
     .mobile-map {
       flex: 1;
       position: relative;
+      width: 100%;
+      height: 100%;
     }
 
     .mobile-sliding-panel {
@@ -91,20 +120,28 @@
       left: 0;
       right: 0;
       background: white;
-      border-radius: 16px 16px 0 0;
+      border-radius: $radius-xl $radius-xl 0 0;
       box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-      transition: transform 0.3s ease-out;
+      transition: transform $transition-normal ease-out;
       z-index: 100;
       max-height: 90vh;
       display: flex;
       flex-direction: column;
 
       &:not(.expanded) {
-        height: 180px;
+        height: 200px; // Slightly taller preview
       }
 
       &.expanded {
         height: 90vh;
+
+        .panel-preview {
+          display: none;
+        }
+
+        .panel-full {
+          display: flex;
+        }
       }
 
       .panel-handle {
@@ -112,36 +149,46 @@
         display: flex;
         justify-content: center;
         cursor: pointer;
+        flex-shrink: 0;
 
         .handle-bar {
           width: 40px;
           height: 4px;
           background: #d0d0d0;
           border-radius: 2px;
+          transition: background $transition-fast;
+        }
+
+        &:hover .handle-bar {
+          background: #a0a0a0;
         }
       }
 
       .panel-preview {
         overflow-x: auto;
         overflow-y: hidden;
-        padding: 0 1rem 1rem;
+        padding: 0 $spacing-lg $spacing-lg;
+        flex: 1;
+        @include scrollbar;
 
         .preview-items {
           display: flex;
-          gap: 1rem;
-          padding-bottom: 0.5rem;
+          gap: $spacing-lg;
+          padding-bottom: $spacing-sm;
 
           .preview-card {
             flex: 0 0 280px;
             background: white;
-            border-radius: 8px;
+            border: 1px solid $border-color;
+            border-radius: $radius-lg;
             overflow: hidden;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: transform $transition-fast;
 
             &:hover {
               transform: translateY(-2px);
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
 
             img {
@@ -151,7 +198,7 @@
             }
 
             .preview-info {
-              padding: 0.75rem;
+              padding: $spacing-md;
               display: flex;
               justify-content: space-between;
               align-items: center;
@@ -164,13 +211,14 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 flex: 1;
+                color: $text-primary;
               }
 
               span {
                 font-size: 0.85rem;
-                color: #666;
+                color: $text-secondary;
                 white-space: nowrap;
-                margin-left: 0.5rem;
+                margin-left: $spacing-sm;
               }
             }
           }
@@ -178,15 +226,29 @@
       }
 
       .panel-full {
+        display: none;
         flex: 1;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
+        @include scrollbar;
+
+        // Ensure proper infinite scroll in mobile expanded view
+        // The scroll happens on panel-full, not on inner elements
       }
     }
   }
 
+  // ===========================
+  // RESPONSIVE BREAKPOINTS
+  // ===========================
   @media (max-width: 768px) {
     .desktop-layout {
       display: none !important;
+    }
+
+    .mobile-layout {
+      display: flex;
+      flex-direction: column;
     }
   }
 
@@ -194,5 +256,32 @@
     .mobile-layout {
       display: none !important;
     }
+
+    .desktop-layout {
+      display: flex;
+    }
+  }
+
+  // Adjust desktop panel width for smaller desktop screens
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .desktop-layout .listings-panel {
+      width: 40%;
+      min-width: 350px;
+    }
+  }
+}
+
+// ===========================
+// UTILITY CLASSES
+// ===========================
+.mobile-hidden {
+  @media (max-width: 768px) {
+    display: none !important;
+  }
+}
+
+.desktop-hidden {
+  @media (min-width: 769px) {
+    display: none !important;
   }
 }

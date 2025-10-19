@@ -11,13 +11,11 @@ export const loadListings = createEffect(
   (actions$ = inject(Actions), listingService = inject(ListingService)) => {
     return actions$.pipe(
       ofType(ListingsActions.loadListings),
-      switchMap(({ filters, reset }) => {
-        return listingService.getListingsWithFilters(filters).pipe(
-          map((response) =>
+      switchMap(() => {
+        return listingService.getListings().pipe(
+          map((listings) =>
             ListingsActions.loadListingsSuccess({
-              listings: response.listings,
-              total: response.total,
-              append: !reset,
+              listings,
             })
           ),
           catchError((error) =>

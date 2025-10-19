@@ -6,6 +6,7 @@ import {
   OnInit,
   OnDestroy,
   computed,
+  input,
 } from '@angular/core';
 import {
   Router,
@@ -21,8 +22,7 @@ import { LanguageSwitcherComponent } from '../../core/i18n/components/language-s
 import { Store } from '@ngrx/store';
 import { selectCurrentLanguage } from '../../store/i18n/language.selectors';
 import { Observable, Subject, takeUntil } from 'rxjs';
-import { filter, map } from 'rxjs/operators';
-import { ModeService } from '../../services/mode/mode.service';
+import { filter, map, tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-navbar',
@@ -39,16 +39,9 @@ import { ModeService } from '../../services/mode/mode.service';
   styleUrl: './navbar.component.scss',
 })
 export class Navbar implements OnInit, OnDestroy {
-  constructor(private modeService: ModeService) {
-    this.isMapMode$ = this.modeService.mode$.pipe(
-      map((mode) => mode === 'map')
-    );
-  }
-
   authService = inject(AuthService);
   router = inject(Router);
   private store = inject(Store);
-  isMapMode$!: Observable<boolean>;
   isMobileMenuOpen = false;
   isDropdownOpen = false;
   isHomePage = false;

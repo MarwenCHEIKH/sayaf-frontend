@@ -3,7 +3,6 @@ import {
   Input,
   Output,
   EventEmitter,
-  HostListener,
   signal,
   computed,
   ChangeDetectionStrategy,
@@ -87,11 +86,6 @@ export class ListingsComponent {
     this.currentImageIndices.set(indices);
   }
 
-  // onSearchInput(query: string): void {
-  //   this.searchQuery.set(query);
-  //   this.searchChange.emit(query);
-  // }
-
   toggleTypeFilter(type: string): void {
     const current = this.selectedTypes();
     const index = current.indexOf(type);
@@ -128,24 +122,6 @@ export class ListingsComponent {
 
   toggleFilters(): void {
     this.showFilters.update((v) => !v);
-  }
-
-  @HostListener('window:scroll')
-  onScroll(): void {
-    if (this.shouldLoadMore()) {
-      this.loadMore.emit();
-    }
-  }
-
-  private shouldLoadMore(): boolean {
-    if (!this.hasMore || this.loading) {
-      return false;
-    }
-
-    const scrollPosition = window.innerHeight + window.scrollY;
-    const scrollThreshold = document.documentElement.scrollHeight - 500;
-
-    return scrollPosition >= scrollThreshold;
   }
 
   onListingClick(id: number): void {
