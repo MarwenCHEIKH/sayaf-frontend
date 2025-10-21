@@ -2,8 +2,9 @@
   <div class="location-display" (click)="toggleDropdown()">
     <span class="location-icon">📍</span>
     <span class="location-text">{{
-      (currentLocation$ | async)?.city || "Tunis"
+      (currentLocation$ | async)?.locationName || "Tunis"
     }}</span>
+
     <span class="dropdown-arrow">▼</span>
   </div>
 

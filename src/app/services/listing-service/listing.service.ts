@@ -123,43 +123,32 @@ export class ListingService {
       })
     );
   }
-  getListingsWithFilters(
-    filters?: Partial<ListingsFilters>,
+  getListingsWithBBox(
+    bounds: { north: number; south: number; east: number; west: number },
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
+    filters?: { type?: string[]; query?: string; locationName?: string }
   ): Observable<ListingsResponse> {
     let params = new HttpParams()
       .set('page', page.toString())
-      .set('limit', limit.toString());
+      .set('limit', limit.toString())
+      .set('north', bounds.north.toString())
+      .set('south', bounds.south.toString())
+      .set('east', bounds.east.toString())
+      .set('west', bounds.west.toString());
 
-    if (filters?.location) {
-      params = params
-        .set('lat', filters.location.lat.toString())
-        .set('lng', filters.location.lng.toString());
-    }
-
-    if (filters?.radius) {
-      params = params.set('radius', filters.radius.toString());
-    }
-
-    if (filters?.bounds) {
-      params = params
-        .set('north', filters.bounds.north.toString())
-        .set('south', filters.bounds.south.toString())
-        .set('east', filters.bounds.east.toString())
-        .set('west', filters.bounds.west.toString());
-    }
-
-    if (filters?.type && filters.type.length > 0) {
+    if (filters?.type && filters.type.length) {
       params = params.set('type', filters.type.join(','));
     }
-
     if (filters?.query) {
       params = params.set('q', filters.query);
     }
+    if (filters?.locationName) {
+      params = params.set('locationName', filters.locationName);
+    }
 
     return this.http
-      .get<ListingsResponse>(`${this.apiUrl}/${'filtered'}`, { params })
+      .get<ListingsResponse>(`${this.apiUrl}/bbox`, { params })
       .pipe(
         map((response) => ({
           listings: response.listings.map((listing) =>

@@ -5,7 +5,6 @@ import { ListingsState } from './listings.state';
 export const selectListingsState =
   createFeatureSelector<ListingsState>('listings');
 
-// All listings from API (raw data)
 export const selectListings = createSelector(
   selectListingsState,
   (state) => state.items
@@ -26,6 +25,16 @@ export const selectListingsFilters = createSelector(
   (state) => state.filters
 );
 
+export const selectListingsPage = createSelector(
+  selectListingsState,
+  (state) => state.page
+);
+
+export const selectHasMoreListings = createSelector(
+  selectListingsState,
+  (state) => state.hasMore
+);
+
 export const selectSelectedListingId = createSelector(
   selectListingsState,
   (state) => state.selectedListingId
@@ -34,4 +43,9 @@ export const selectSelectedListingId = createSelector(
 export const selectListingsTotal = createSelector(
   selectListingsState,
   (state) => state.total
+);
+
+export const selectListingsHasMore = createSelector(
+  selectListingsState,
+  (state) => state.hasMore
 );

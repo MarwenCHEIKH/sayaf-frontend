@@ -1,13 +1,26 @@
 export interface LocationCoordinates {
-  lat: number;
-  lng: number;
-  city?: string;
-  detected?: boolean;
+  locationName: string;
+  bounds?: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  };
+  lat?: number;
+  lng?: number;
+  detected: boolean;
 }
 
 export interface LocationSearchResult {
-  city: string;
-  lat: number;
-  lng: number;
+  locationName: string;
+  lat?: number;
+  lng?: number;
+  bounds?: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  };
   displayName: string;
+  type?: string;
 }

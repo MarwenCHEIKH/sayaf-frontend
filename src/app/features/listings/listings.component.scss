@@ -981,7 +981,7 @@ $transition-normal: 0.3s;
           justify-content: center;
           opacity: 0;
           transition: opacity $transition-fast;
-          z-index: 2;
+          z-index: 10;
 
           &:hover {
             background: white;
@@ -1067,8 +1067,8 @@ $transition-normal: 0.3s;
 
           .circle {
             position: relative;
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background-color: #dcdcdc;
             overflow: hidden;
@@ -1121,8 +1121,11 @@ $transition-normal: 0.3s;
             white-space: nowrap;
 
             &.open {
-              color: $secondary-color;
+              color: green;
               font-weight: 500;
+            }
+            &.closed {
+              color: #dc3545;
             }
           }
         }

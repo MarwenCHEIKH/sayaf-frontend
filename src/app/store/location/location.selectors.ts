@@ -1,24 +1,25 @@
+// location.selectors.ts
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { LocationState } from './location.state';
+import { ListingsFilters } from '../listings/listings.state';
 
 export const selectLocationState =
   createFeatureSelector<LocationState>('location');
 
-/**
- * Ensures we return a new object whenever the state updates.
- * This guarantees Angular change detection and async pipe updates.
- */
-export const selectCurrentLocation = createSelector(
+export const selectCurrentLocationFilters = createSelector(
   selectLocationState,
-  (state) => {
-    if (!state.current) return null;
+  (state): ListingsFilters | null => {
+    // Check if current exists and has required properties
+    if (!state.current || !state.current.bounds) {
+      console.warn('⚠️ Location state missing bounds:', state.current);
+      return null;
+    }
 
-    // Return a *new object* each time (important for change detection)
     return {
-      lat: state.current.lat,
-      lng: state.current.lng,
-      city: state.current.city,
-      detected: state.current.detected,
+      locationName: state.current.locationName || 'Unknown',
+      bounds: state.current.bounds,
+      type: [],
+      query: '',
     };
   }
 );
@@ -28,7 +29,7 @@ export const selectLocationLoading = createSelector(
   (state) => state.loading
 );
 
-export const selectLocationError = createSelector(
+export const selectCurrentLocation = createSelector(
   selectLocationState,
-  (state) => state.error
+  (state) => state.current
 );

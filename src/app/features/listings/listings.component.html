@@ -51,12 +51,12 @@
       >
         <h4>Active Filters:</h4>
         <div class="filter-chips">
-          <span class="filter-chip" *ngFor="let type of selectedTypes()">{{
-            type
-          }}</span>
-          <span class="filter-chip" *ngIf="minReviewScore() > 0"
-            >Min Score: {{ formatReviewScore(minReviewScore()) }}</span
-          >
+          <span class="filter-chip" *ngFor="let type of selectedTypes()">
+            {{ type }}
+          </span>
+          <span class="filter-chip" *ngIf="minReviewScore() > 0">
+            Min Score: {{ formatReviewScore(minReviewScore()) }}
+          </span>
         </div>
         <button class="clear-filters-btn" (click)="clearFilters()">
           Clear All Filters
@@ -70,14 +70,14 @@
           <input
             type="range"
             [value]="minReviewScore()"
-            [max]="maxReviewScore()"
+            [max]="getMaxReviewScore()"
             min="0"
             step="0.1"
             (input)="onReviewScoreChange($any($event.target).valueAsNumber)"
           />
           <div class="slider-labels">
             <span>0</span>
-            <span>{{ maxReviewScore() }}</span>
+            <span>{{ getMaxReviewScore() }}</span>
           </div>
         </div>
         <p class="current-value">
@@ -90,7 +90,7 @@
         <label>Type</label>
         <div class="type-filters">
           <button
-            *ngFor="let type of availableTypes()"
+            *ngFor="let type of getAvailableTypes()"
             class="type-filter-btn"
             [class.active]="selectedTypes().includes(type)"
             (click)="toggleTypeFilter(type)"
@@ -244,12 +244,12 @@
     >
       <h3>Active Filters:</h3>
       <div class="filter-chips">
-        <span class="filter-chip" *ngFor="let type of selectedTypes()">{{
-          type
-        }}</span>
-        <span class="filter-chip" *ngIf="minReviewScore() > 0"
-          >Min Score: {{ formatReviewScore(minReviewScore()) }}</span
-        >
+        <span class="filter-chip" *ngFor="let type of selectedTypes()">
+          {{ type }}
+        </span>
+        <span class="filter-chip" *ngIf="minReviewScore() > 0">
+          Min Score: {{ formatReviewScore(minReviewScore()) }}
+        </span>
       </div>
       <button class="clear-filters-btn" (click)="clearFilters()">
         Clear All Filters
@@ -262,14 +262,14 @@
         <input
           type="range"
           [value]="minReviewScore()"
-          [max]="maxReviewScore()"
+          [max]="getMaxReviewScore()"
           min="0"
           step="0.1"
           (input)="onReviewScoreChange($any($event.target).valueAsNumber)"
         />
         <div class="slider-labels">
           <span>0</span>
-          <span>{{ maxReviewScore() }}</span>
+          <span>{{ getMaxReviewScore() }}</span>
         </div>
       </div>
       <p class="current-value">
@@ -281,7 +281,7 @@
       <label>Type</label>
       <div class="type-filters">
         <button
-          *ngFor="let type of availableTypes()"
+          *ngFor="let type of getAvailableTypes()"
           class="type-filter-btn"
           [class.active]="selectedTypes().includes(type)"
           (click)="toggleTypeFilter(type)"
@@ -294,17 +294,14 @@
 </div>
 
 <!-- LOADING STATE -->
-<div
-  class="loading-container"
-  *ngIf="loading && displayedListings().length === 0"
->
+<div class="loading-container" *ngIf="loading && listings.length === 0">
   <div class="spinner"></div>
   <p>Loading amazing places...</p>
 </div>
 
 <!-- LISTINGS GRID -->
-<div class="listings-grid" *ngIf="!loading || displayedListings().length > 0">
-  <div class="empty-state" *ngIf="displayedListings().length === 0 && !loading">
+<div class="listings-grid" *ngIf="!loading || listings.length > 0">
+  <div class="empty-state" *ngIf="listings.length === 0 && !loading">
     <div class="empty-icon">🔍</div>
     <h2>No listings found</h2>
     <p>Try adjusting your filters or search terms</p>
@@ -315,11 +312,7 @@
 
   <div
     class="listing-card"
-    *ngFor="
-      let listing of displayedListings();
-      let i = index;
-      trackBy: trackByListingId
-    "
+    *ngFor="let listing of listings; let i = index; trackBy: trackByListingId"
     [class.selected]="selectedId === listing.id"
     [attr.data-listing-id]="listing.id"
     (click)="onListingClick(listing.id)"
@@ -386,7 +379,7 @@
 
     <div class="listing-info">
       <div class="listing-header">
-        <h3 class="listing-name">{{ i + 1 }}.{{ listing.name }}</h3>
+        <h3 class="listing-name">{{ i + 1 }}. {{ listing.name }}</h3>
       </div>
 
       <div class="rating" *ngIf="listing.rating">
@@ -399,9 +392,9 @@
           </div>
         </div>
 
-        <span class="rating-score"
-          >{{ listing.rating | number : "1.1-1" }}/5</span
-        >
+        <span class="rating-score">
+          {{ listing.rating | number : "1.1-1" }}/5
+        </span>
 
         <span class="rating-text">
           ({{ listing.user_ratings_total || 0 }} reviews)
@@ -439,6 +432,7 @@
           <span
             class="detail-text"
             [class.open]="listing.opening_hours?.open_now"
+            [class.closed]="!listing.opening_hours?.open_now"
           >
             {{ getOpeningHoursText(listing) }}
           </span>
@@ -448,17 +442,13 @@
   </div>
 </div>
 
-<div
-  class="load-more-container"
-  *ngIf="loading && displayedListings().length > 0"
->
+<!-- LOAD MORE INDICATOR -->
+<div class="load-more-container" *ngIf="loading && listings.length > 0">
   <div class="spinner small"></div>
   <p>Loading more...</p>
 </div>
 
-<div
-  class="end-of-results"
-  *ngIf="!hasMore && displayedListings().length > 0 && !loading"
->
+<!-- END OF RESULTS -->
+<div class="end-of-results" *ngIf="!hasMore && listings.length > 0 && !loading">
   <p>You've reached the end of the listings</p>
 </div>

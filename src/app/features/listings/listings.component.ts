@@ -4,7 +4,6 @@ import {
   Output,
   EventEmitter,
   signal,
-  computed,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -28,13 +27,18 @@ import { ListingWithPhotos } from '../../models/listing.model';
 export class ListingsComponent {
   // Inputs from parent container
   @Input({ required: true }) set listings(value: ListingWithPhotos[]) {
-    this._listings.set(value);
+    this._listings = value;
     this.initializeImageIndices(value);
   }
+  get listings(): ListingWithPhotos[] {
+    return this._listings;
+  }
+  private _listings: ListingWithPhotos[] = [];
 
   @Input() loading = false;
   @Input() selectedId?: number;
   @Input() hasMore = true;
+  @Input() isMobileView = false;
 
   // Outputs to parent container
   @Output() listingClick = new EventEmitter<number>();
@@ -47,44 +51,17 @@ export class ListingsComponent {
   }>();
   @Output() reviewScoreChange = new EventEmitter<number>();
 
-  // Internal signal for listings
-  private _listings = signal<ListingWithPhotos[]>([]);
-
-  // Public accessor
-  displayedListings = computed(() => this._listings());
-
   // UI state
-  @Input() isMobileView = false;
-
   showMobileSortDropdown = signal(false);
   showFilters = signal(false);
-  // searchQuery = signal('');
+  showSortDropdown = false; // Desktop sort dropdown
   selectedTypes = signal<string[]>([]);
   minReviewScore = signal(0);
   sortBy = signal<'rating' | 'price' | 'reviewScore'>('reviewScore');
   sortOrder = signal<'asc' | 'desc'>('desc');
-  showSortDropdown = false;
 
   // Image carousel tracking
   currentImageIndices = signal<{ [listingId: number]: number }>({});
-
-  // Computed values
-  availableTypes = computed(() => {
-    const typesSet = new Set<string>();
-    this.displayedListings().forEach((listing) => {
-      listing.type.forEach((type) => typesSet.add(type));
-    });
-    return Array.from(typesSet).sort();
-  });
-
-  maxReviewScore = computed(() => {
-    const listings = this.displayedListings();
-    if (listings.length === 0) return 10;
-    const scores = listings.map((listing) =>
-      this.calculateReviewScore(listing)
-    );
-    return Math.ceil(Math.max(...scores));
-  });
 
   private initializeImageIndices(listings: ListingWithPhotos[]): void {
     const indices = { ...this.currentImageIndices() };
@@ -105,9 +82,11 @@ export class ListingsComponent {
     this.selectedTypes.set(updated);
     this.typeFilterChange.emit(updated);
   }
-  toggleSortDropdown() {
+
+  toggleSortDropdown(): void {
     this.showMobileSortDropdown.update((v) => !v);
   }
+
   onSortChange(
     sortBy: 'rating' | 'price' | 'reviewScore',
     order: 'asc' | 'desc'
@@ -116,6 +95,7 @@ export class ListingsComponent {
     this.sortOrder.set(order);
     this.sortChange.emit({ sortBy, order });
   }
+
   getSortLabel(sortBy: string): string {
     const labels: { [key: string]: string } = {
       reviewScore: 'Review Score',
@@ -132,7 +112,6 @@ export class ListingsComponent {
 
   clearFilters(): void {
     this.selectedTypes.set([]);
-    // this.searchQuery.set('');
     this.minReviewScore.set(0);
 
     this.searchChange.emit('');
@@ -148,7 +127,7 @@ export class ListingsComponent {
     this.listingClick.emit(id);
   }
 
-  // Image carousel and utility methods
+  // Image carousel methods
   getStarRating(rating: number = 0): boolean[] {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -218,7 +197,6 @@ export class ListingsComponent {
   onImageError(event: any): void {
     event.target.src = 'assets/images/poster.jpg';
   }
-  // Add these methods to your component
 
   getFirstType(listing: ListingWithPhotos): string {
     return listing.type && listing.type.length > 0
@@ -229,15 +207,98 @@ export class ListingsComponent {
   }
 
   getOpeningHoursText(listing: ListingWithPhotos): string {
-    if (!listing.opening_hours) return 'Hours not available';
-    return listing.opening_hours.open_now ? 'Opens in 35 min' : 'Closed';
+    const hours = listing.opening_hours;
+    if (!hours || !Array.isArray(hours.periods) || hours.periods.length === 0) {
+      return 'Hours not available';
+    }
+
+    const now = new Date();
+    const localDay = now.getDay(); // 0 = Sunday ... 6 = Saturday
+    const localMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const periods = hours.periods.map((p: any) => ({
+      openDay: p.open.day,
+      openMinutes: p.open.hour * 60 + (p.open.minute || 0),
+      closeDay: p.close.day,
+      closeMinutes: p.close.hour * 60 + (p.close.minute || 0),
+    }));
+
+    // Check if open now
+    for (const p of periods) {
+      if (p.openDay === localDay) {
+        // Case 1: closes same day
+        if (
+          p.closeDay === p.openDay &&
+          localMinutes >= p.openMinutes &&
+          localMinutes < p.closeMinutes
+        ) {
+          const minsLeft = p.closeMinutes - localMinutes;
+          const hoursLeft = Math.floor(minsLeft / 60);
+          const minsRem = minsLeft % 60;
+          return `Open now (closes in ${hoursLeft}h ${minsRem}m)`;
+        }
+        // Case 2: closes next day (e.g., 22:00 → 02:00)
+        if (p.closeDay !== p.openDay && localMinutes >= p.openMinutes) {
+          const closeAfterMidnight =
+            p.closeMinutes + 24 * 60 * (p.closeDay - p.openDay);
+          const minsLeft = closeAfterMidnight - localMinutes;
+          const hoursLeft = Math.floor(minsLeft / 60);
+          const minsRem = minsLeft % 60;
+          return `Open now (closes in ${hoursLeft}h ${minsRem}m)`;
+        }
+      }
+
+      // Handle case: open period spans midnight (yesterday’s open still active)
+      if (
+        p.closeDay !== p.openDay &&
+        localDay === p.closeDay &&
+        localMinutes < p.closeMinutes
+      ) {
+        const minsLeft = p.closeMinutes - localMinutes;
+        const hoursLeft = Math.floor(minsLeft / 60);
+        const minsRem = minsLeft % 60;
+        return `Open now (closes in ${hoursLeft}h ${minsRem}m)`;
+      }
+    }
+
+    // If not open now → find next opening
+    for (let i = 0; i < 7; i++) {
+      const dayIndex = (localDay + i) % 7;
+      const nextPeriod = periods.find((p: any) => p.openDay === dayIndex);
+      if (nextPeriod) {
+        let diffDays = i;
+        let diffMinutes = nextPeriod.openMinutes - localMinutes;
+        if (diffMinutes < 0 || i > 0) diffMinutes += diffDays * 24 * 60;
+
+        const totalMins = diffMinutes;
+        const hours = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+
+        if (diffDays === 0) return `Opens in ${hours}h ${mins}m`;
+        if (diffDays === 1)
+          return `Opens tomorrow at ${this.formatTime(nextPeriod.openMinutes)}`;
+        return `Opens in ${diffDays} days at ${this.formatTime(
+          nextPeriod.openMinutes
+        )}`;
+      }
+    }
+
+    return 'Closed';
+  }
+
+  /** Format minutes since midnight → "12:30 PM" */
+  private formatTime(totalMinutes: number): string {
+    let hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${hours}:${mins.toString().padStart(2, '0')} ${ampm}`;
   }
 
   onLikeClick(listing: ListingWithPhotos, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
     console.log('Liked:', listing.name);
-    // TODO: Implement like functionality
   }
 
   onMapClick(listing: ListingWithPhotos, event: Event): void {
@@ -249,9 +310,9 @@ export class ListingsComponent {
     const fills: number[] = [];
     for (let i = 1; i <= 5; i++) {
       const diff = rating - (i - 1);
-      if (diff >= 1) fills.push(100); // full circle
-      else if (diff > 0) fills.push(diff * 100); // partial fill
-      else fills.push(0); // empty circle
+      if (diff >= 1) fills.push(100);
+      else if (diff > 0) fills.push(diff * 100);
+      else fills.push(0);
     }
     return fills;
   }
@@ -268,5 +329,22 @@ export class ListingsComponent {
 
   formatReviewScore(score: number): string {
     return score.toFixed(2);
+  }
+
+  // Helper methods for template
+  getAvailableTypes(): string[] {
+    const typesSet = new Set<string>();
+    this.listings.forEach((listing) => {
+      listing.type.forEach((type) => typesSet.add(type));
+    });
+    return Array.from(typesSet).sort();
+  }
+
+  getMaxReviewScore(): number {
+    if (this.listings.length === 0) return 10;
+    const scores = this.listings.map((listing) =>
+      this.calculateReviewScore(listing)
+    );
+    return Math.ceil(Math.max(...scores));
   }
 }

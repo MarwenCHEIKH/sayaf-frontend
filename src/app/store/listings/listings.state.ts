@@ -1,25 +1,30 @@
 // src/app/store/listings/listings.state.ts
-import { Listing } from '../../models/listing.model';
+import { ListingWithPhotos } from '../../models/listing.model';
 
 export interface ListingsFilters {
-  location: { lat: number; lng: number };
+  locationName: string; // Name of the selected location (city, village, state)
+
+  // Optional bounding box (used when "search as map moves" is ON)
   bounds?: {
     north: number;
     south: number;
     east: number;
     west: number;
   };
+
+  // Filters applied on listings
   type?: string[];
   query?: string;
-  radius?: number; // in km
 }
 
 export interface ListingsState {
-  items: Listing[]; // All listings from API
-  total: number; // Total count from API
+  items: ListingWithPhotos[];
+  total: number;
   loading: boolean;
   error: string | null;
-  filters: ListingsFilters; // API-level filters
+  filters: ListingsFilters;
+  page: number;
+  hasMore: boolean;
   selectedListingId?: number;
 }
 
@@ -29,7 +34,17 @@ export const initialListingsState: ListingsState = {
   loading: false,
   error: null,
   filters: {
-    location: { lat: 36.8065, lng: 10.1815 },
-    radius: 10,
+    locationName: 'Tunis',
+    // Bounding box for Tunis (optional: used if search-as-map-moves is ON)
+    bounds: {
+      north: 36.9430196,
+      south: 36.6925111,
+      east: 10.3548099,
+      west: 10.0037899,
+    },
+    type: [], // default: no type filter
+    query: '', // default: empty search
   },
+  page: 1,
+  hasMore: true,
 };

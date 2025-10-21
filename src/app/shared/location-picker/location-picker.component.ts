@@ -11,12 +11,14 @@ import { Store } from '@ngrx/store';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { LocationActions } from '../../store/location/location.actions';
-import {
-  selectCurrentLocation,
-  selectLocationLoading,
-} from '../../store/location/location.selectors';
+
 import { LocationSearchResult } from '../../models/location.model';
 import { LocationService } from '../../services/location-service/location.service';
+import { ListingsActions } from '../../store/listings/listings.actions';
+import {
+  selectCurrentLocationFilters,
+  selectLocationLoading,
+} from '../../store/location/location.selectors';
 
 @Component({
   selector: 'app-location-picker',
@@ -31,7 +33,7 @@ export class LocationPickerComponent {
   private locationService = inject(LocationService);
   private searchSubject = new Subject<string>();
 
-  currentLocation$ = this.store.select(selectCurrentLocation);
+  currentLocation$ = this.store.select(selectCurrentLocationFilters);
   locationLoading$ = this.store.select(selectLocationLoading);
 
   showDropdown = signal(false);
@@ -59,9 +61,24 @@ export class LocationPickerComponent {
 
   useCurrentLocation(): void {
     this.store.dispatch(LocationActions.loadCurrentLocation());
+
     this.currentLocation$.subscribe((location) => {
-      console.log('Current location state:', location);
+      if (!location) return;
+
+      // Optional: immediately trigger listings load
+      this.store.dispatch(
+        ListingsActions.loadListings({
+          filters: {
+            locationName: location.locationName,
+            bounds: location.bounds,
+            type: [],
+            query: '',
+          },
+          reset: true,
+        })
+      );
     });
+
     this.showDropdown.set(false);
   }
 
@@ -69,13 +86,15 @@ export class LocationPickerComponent {
     this.store.dispatch(
       LocationActions.setManualLocation({
         location: {
+          locationName: result.locationName, // maps directly to ListingsFilters.locationName
           lat: result.lat,
           lng: result.lng,
-          city: result.city,
+          bounds: result.bounds, // optional: used if "search as map moves" is ON
           detected: false,
         },
       })
     );
+
     this.showDropdown.set(false);
     this.searchQuery = '';
     this.searchResults.set([]);
