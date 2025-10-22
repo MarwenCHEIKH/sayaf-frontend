@@ -7,23 +7,16 @@ export const listingsReducer = createReducer(
 
   on(
     ListingsActions.loadListings,
-    (state, { filters, reset }): ListingsState => {
-      console.log('🔄 Reducer - loadListings:', {
-        reset,
-        currentPage: state.page,
-      });
-
-      return {
-        ...state,
-        loading: true,
-        error: null,
-        filters: { ...state.filters, ...filters },
-        // Reset page to 1 if resetting, otherwise keep current page
-        page: reset ? 1 : state.page,
-        // Clear items if resetting
-        items: reset ? [] : state.items,
-      };
-    }
+    (state, { filters, reset }): ListingsState => ({
+      ...state,
+      loading: true,
+      error: null,
+      filters: { ...state.filters, ...filters },
+      // Reset page to 1 if resetting, otherwise keep current page
+      page: reset ? 1 : state.page,
+      // Clear items if resetting
+      items: reset ? [] : state.items,
+    })
   ),
 
   on(
@@ -36,18 +29,6 @@ export const listingsReducer = createReducer(
         : listings;
 
       const newItems = append ? [...state.items, ...newListings] : listings;
-
-      console.log('📦 Reducer - loadListingsSuccess:', {
-        append,
-        previousCount: state.items.length,
-        newListingsCount: listings.length,
-        filteredNewCount: newListings.length,
-        finalCount: newItems.length,
-        previousPage: state.page,
-        newPage: append ? state.page + 1 : 1,
-        total,
-        hasMore: newItems.length < total,
-      });
 
       return {
         ...state,
@@ -62,15 +43,14 @@ export const listingsReducer = createReducer(
     }
   ),
 
-  on(ListingsActions.loadListingsFailure, (state, { error }): ListingsState => {
-    console.error('❌ Reducer - loadListingsFailure:', error);
-
-    return {
+  on(
+    ListingsActions.loadListingsFailure,
+    (state, { error }): ListingsState => ({
       ...state,
       loading: false,
       error,
-    };
-  }),
+    })
+  ),
 
   on(
     ListingsActions.updateFilters,

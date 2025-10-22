@@ -7,11 +7,12 @@ import {
   signal,
   computed,
   PLATFORM_ID,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Store } from '@ngrx/store';
-import { Subject } from 'rxjs';
-import { takeUntil, distinctUntilChanged } from 'rxjs/operators';
+import { combineLatest, of, Subject } from 'rxjs';
+import { takeUntil, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { ListingsActions } from '../../store/listings/listings.actions';
 import {
   selectListings,
@@ -26,6 +27,7 @@ import { MapComponent } from '../../features/map/map.component';
 import { ListingsComponent } from '../../features/listings/listings.component';
 import { MapService } from '../../services/map-service/map.service';
 import { RouterModule } from '@angular/router';
+import { bounds } from 'leaflet';
 
 @Component({
   selector: 'app-listings-map-container',
@@ -40,6 +42,9 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   private mapService = inject(MapService);
   private destroy$ = new Subject<void>();
   private platformId = inject(PLATFORM_ID);
+  private shouldRecenter = true;
+
+  @ViewChild(MapComponent) mapComponent?: MapComponent;
 
   // Store signals - single source of truth
   displayedListings = this.store.selectSignal(selectListings);
@@ -51,6 +56,7 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   mapCenter = signal({ lat: 36.8065, lng: 10.1815 });
   isMobile = signal(false);
   panelExpanded = signal(false);
+  searchAsMapMoves = signal(false);
 
   // Computed: markers synced with displayed listings
   markers = computed(() => {
@@ -68,9 +74,8 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
           lat: coords.lat,
           lng: coords.lng,
           type: listing.type,
-          photo: listing.photoUrls?.[0],
+          photo: listing.photoUrls?.[0] || 'assets/images/poster.jpg',
         });
-
         return acc;
       },
       []
@@ -140,11 +145,25 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   }
 
   onMapMoved(event: MapMoveEvent): void {
-    this.store.dispatch(
-      ListingsActions.updateMapBounds({ bounds: event.bounds })
-    );
+    // Only update bounds if "Search as map moves" is enabled
+    if (this.searchAsMapMoves()) {
+      this.store.dispatch(
+        ListingsActions.updateMapBounds({ bounds: event.bounds })
+      );
+      console.log({ bounds: event.bounds });
+    }
   }
+  toggleSearchAsMapMoves(): void {
+    this.searchAsMapMoves.update((v) => !v);
 
+    // // If enabling, immediately search with current map bounds
+    // if (this.searchAsMapMoves() && this.mapComponent) {
+    //   const bounds = this.mapComponent.getBounds();
+    //   if (bounds) {
+    //     this.store.dispatch(ListingsActions.updateMapBounds({ bounds }));
+    //   }
+    // }
+  }
   onMarkerClick(id: number): void {
     this.store.dispatch(ListingsActions.selectListing({ id }));
 
@@ -155,6 +174,22 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
 
   onListingClick(id: number): void {
     this.store.dispatch(ListingsActions.selectListing({ id }));
+
+    // Find the listing and fly to its location
+    const listing = this.displayedListings().find((l) => l.id === id);
+    if (listing) {
+      const coords = this.mapService.parsePostGISPoint(listing.location_point);
+      if (coords && this.mapComponent) {
+        // Fly to the listing location
+        console.log(coords);
+        this.mapComponent.flyTo(coords.lat, coords.lng, 16);
+      }
+    }
+
+    // Scroll to listing on mobile
+    if (this.isMobile()) {
+      this.scrollToListing(id);
+    }
   }
 
   onScroll(event: Event): void {
@@ -179,14 +214,27 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
 
     console.log('📜 Load more triggered');
 
-    // Dispatch with reset: false to append
-    this.store.dispatch(
-      ListingsActions.loadListings({
-        filters,
-        reset: false,
-      })
-    );
+    if (this.searchAsMapMoves()) {
+      // Fetch all listings in bounds at once
+      this.store.dispatch(
+        ListingsActions.loadListings({
+          filters,
+          reset: true, // reset makes sure we replace any previous incomplete list
+          limit: 0, // convention: 0 or undefined = fetch all
+        })
+      );
+    } else {
+      // Normal infinite scroll behavior
+      this.store.dispatch(
+        ListingsActions.loadListings({
+          filters,
+          reset: false,
+          limit: 20,
+        })
+      );
+    }
   }
+
   //utility function to Compute centroid from displayed listings
   private computeListingsCenter(
     listings: ListingWithPhotos[]
@@ -215,47 +263,71 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   }
 
   private subscribeToStore(): void {
-    // Subscribe to filters - load listings when filters change
     this.store
       .select(selectCurrentLocationFilters)
       .pipe(
-        takeUntil(this.destroy$),
-        distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b))
+        distinctUntilChanged((prev, curr) => {
+          const prevBounds = prev?.bounds;
+          const currBounds = curr?.bounds;
+
+          if (!prevBounds && !currBounds) return true;
+          if (!prevBounds || !currBounds) return false;
+
+          return (
+            prevBounds.north === currBounds.north &&
+            prevBounds.south === currBounds.south &&
+            prevBounds.east === currBounds.east &&
+            prevBounds.west === currBounds.west
+          );
+        }),
+        switchMap((filters) => {
+          if (!filters || !filters.bounds) {
+            console.warn('⚠️ Invalid filters:', filters);
+            return of<
+              [
+                ListingWithPhotos[],
+                { north: number; south: number; east: number; west: number }
+              ]
+            >([
+              [],
+              {
+                north: 0,
+                south: 0,
+                east: 0,
+                west: 0,
+              },
+            ]);
+          }
+
+          this.store.dispatch(
+            ListingsActions.loadListings({
+              filters,
+              reset: true,
+              limit: this.searchAsMapMoves() ? 0 : 20,
+            })
+          );
+
+          return combineLatest([
+            this.store.select(selectListings),
+            of(filters.bounds!),
+          ]);
+        }),
+        takeUntil(this.destroy$)
       )
-      .subscribe((filters) => {
-        if (!filters || !filters.bounds) {
-          console.warn('⚠️ Invalid filters:', filters);
-          return;
+      .subscribe(([listings, bounds]) => {
+        // Only auto-center when "Search as map moves" is disabled
+        if (!this.searchAsMapMoves()) {
+          const center = this.computeListingsCenter(listings);
+
+          if (center) {
+            this.mapCenter.set(center);
+          } else if (bounds) {
+            this.mapCenter.set({
+              lat: (bounds.north + bounds.south) / 2,
+              lng: (bounds.east + bounds.west) / 2,
+            });
+          }
         }
-
-        this.store
-          .select(selectListings)
-          .pipe(takeUntil(this.destroy$))
-          .subscribe((listings) => {
-            const center = this.computeListingsCenter(listings);
-            if (center) {
-              this.mapCenter.set(center);
-            } else {
-              // fallback to bounds center if listings empty
-              const filters = this.store.selectSignal(
-                selectCurrentLocationFilters
-              )();
-              if (filters?.bounds) {
-                this.mapCenter.set({
-                  lat: (filters.bounds.north + filters.bounds.south) / 2,
-                  lng: (filters.bounds.east + filters.bounds.west) / 2,
-                });
-              }
-            }
-          });
-
-        // Load with reset when filters change
-        this.store.dispatch(
-          ListingsActions.loadListings({
-            filters,
-            reset: true,
-          })
-        );
       });
   }
 

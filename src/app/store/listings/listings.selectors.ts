@@ -30,7 +30,7 @@ export const selectListingsPage = createSelector(
   (state) => state.page
 );
 
-export const selectHasMoreListings = createSelector(
+export const selectListingsHasMore = createSelector(
   selectListingsState,
   (state) => state.hasMore
 );
@@ -45,7 +45,7 @@ export const selectListingsTotal = createSelector(
   (state) => state.total
 );
 
-export const selectListingsHasMore = createSelector(
+export const selectMapBounds = createSelector(
   selectListingsState,
-  (state) => state.hasMore
+  (state) => state.filters.bounds // Returns { north, south, east, west } | undefined
 );

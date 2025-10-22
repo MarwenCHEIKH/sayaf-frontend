@@ -10,6 +10,7 @@ export const ListingsActions = createActionGroup({
     'Load Listings': props<{
       filters: Partial<ListingsFilters>;
       reset?: boolean;
+      limit?: number;
     }>(),
     'Load Listings Success': props<{
       listings: Listing[];
