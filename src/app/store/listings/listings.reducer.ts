@@ -1,3 +1,4 @@
+// src/app/store/listings/listings.reducer.ts
 import { createReducer, on } from '@ngrx/store';
 import { ListingsActions } from './listings.actions';
 import { ListingsState, initialListingsState } from './listings.state';
@@ -12,29 +13,31 @@ export const listingsReducer = createReducer(
       loading: true,
       error: null,
       filters: { ...state.filters, ...filters },
-      // Reset page to 1 if resetting, otherwise keep current page
       page: reset ? 1 : state.page,
-      // Clear items if resetting
       items: reset ? [] : state.items,
+      clusters: reset ? [] : state.clusters,
     })
   ),
 
   on(
     ListingsActions.loadListingsSuccess,
-    (state, { listings, total, append }): ListingsState => {
-      // Avoid duplicates when appending
+    (state, { listings, clusters, tier, total, append }): ListingsState => {
       const existingIds = new Set(state.items.map((item) => item.id));
-      const newListings = append
-        ? listings.filter((listing) => !existingIds.has(listing.id))
-        : listings;
+      const newListings =
+        append && listings
+          ? listings.filter((listing) => !existingIds.has(listing.id))
+          : listings || [];
 
-      const newItems = append ? [...state.items, ...newListings] : listings;
+      const newItems = append
+        ? [...state.items, ...newListings]
+        : listings || [];
 
       return {
         ...state,
         items: newItems,
+        clusters: clusters || [],
+        tier,
         total,
-        // Increment page when appending successfully
         page: append ? state.page + 1 : 1,
         loading: false,
         error: null,
@@ -57,9 +60,9 @@ export const listingsReducer = createReducer(
     (state, { filters }): ListingsState => ({
       ...state,
       filters: { ...state.filters, ...filters },
-      // Reset pagination when filters change
       page: 1,
       items: [],
+      clusters: [],
       hasMore: true,
     })
   ),
@@ -69,9 +72,9 @@ export const listingsReducer = createReducer(
     (state, { bounds }): ListingsState => ({
       ...state,
       filters: { ...state.filters, bounds },
-      // Reset pagination when bounds change
       page: 1,
       items: [],
+      clusters: [],
       hasMore: true,
     })
   ),

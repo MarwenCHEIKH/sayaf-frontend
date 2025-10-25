@@ -1,3 +1,4 @@
+// src/app/features/map/map.component.ts
 import {
   Component,
   Input,
@@ -19,6 +20,7 @@ import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { MapService } from '../../services/map-service/map.service';
 import { MarkerData, MapMoveEvent } from '../../models/map.model';
+import { ClusterMarker } from '../../services/listing-service/listing.service';
 
 @Component({
   selector: 'app-map',
@@ -39,6 +41,28 @@ import { MarkerData, MapMoveEvent } from '../../models/map.model';
         border-radius: 8px;
         overflow: hidden;
       }
+
+      /* Modern marker hover effects */
+      :host ::ng-deep .modern-marker:hover > div > div:first-child,
+      :host ::ng-deep .modern-cluster:hover > div {
+        transform: scale(1.1);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+      }
+
+      /* Custom popup styling */
+      :host ::ng-deep .leaflet-popup-content-wrapper {
+        border-radius: 12px;
+        padding: 0;
+        overflow: hidden;
+      }
+
+      :host ::ng-deep .leaflet-popup-content {
+        margin: 0;
+      }
+
+      :host ::ng-deep .leaflet-popup-tip {
+        border-radius: 2px;
+      }
     `,
   ],
 })
@@ -49,6 +73,7 @@ export class MapComponent
   mapContainer!: ElementRef<HTMLDivElement>;
 
   @Input() markers: MarkerData[] = [];
+  @Input() clusters: ClusterMarker[] = [];
   @Input() selectedMarkerId?: number;
   @Input() interactive = true;
   @Input() center?: { lat: number; lng: number };
@@ -57,6 +82,7 @@ export class MapComponent
 
   @Output() mapMoved = new EventEmitter<MapMoveEvent>();
   @Output() markerClicked = new EventEmitter<number>();
+  @Output() clusterClicked = new EventEmitter<ClusterMarker>();
 
   private mapService = inject(MapService);
   private platformId = inject(PLATFORM_ID);
@@ -66,17 +92,13 @@ export class MapComponent
   private markerInstances = new Map<number, any>();
   private mapMoveSubject = new Subject<void>();
 
-  // Flags to prevent feedback loops
   private isInitialLoad = true;
   private isProgrammaticMove = false;
   private shouldIgnoreNextMove = false;
-
-  // Track last center to avoid unnecessary moves
   private lastSetCenter?: { lat: number; lng: number };
 
   ngOnInit(): void {
-    // Only emit events for user-initiated moves
-    this.mapMoveSubject.pipe(debounceTime(300)).subscribe(() => {
+    this.mapMoveSubject.pipe(debounceTime(500)).subscribe(() => {
       if (!this.isProgrammaticMove && !this.isInitialLoad) {
         this.emitMapMoveEvent();
       }
@@ -102,6 +124,10 @@ export class MapComponent
       this.updateMarkers();
     }
 
+    if (changes['clusters'] && !changes['clusters'].firstChange) {
+      this.updateMarkers();
+    }
+
     if (
       changes['selectedMarkerId'] &&
       !changes['selectedMarkerId'].firstChange
@@ -109,7 +135,6 @@ export class MapComponent
       this.updateSelectedMarker();
     }
 
-    // Only update map view if center actually changed significantly
     if (
       changes['center'] &&
       !changes['center'].firstChange &&
@@ -118,7 +143,6 @@ export class MapComponent
     ) {
       const newCenter = changes['center'].currentValue;
 
-      // Check if center changed significantly (> 0.001 degrees ~= 100m)
       if (this.hasCenterChangedSignificantly(newCenter)) {
         this.shouldIgnoreNextMove = true;
         this.isProgrammaticMove = true;
@@ -129,7 +153,6 @@ export class MapComponent
 
         this.lastSetCenter = { ...newCenter };
 
-        // Reset flag after map settles
         setTimeout(() => {
           this.isProgrammaticMove = false;
           this.shouldIgnoreNextMove = false;
@@ -146,9 +169,7 @@ export class MapComponent
   }
 
   private initMap(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
+    if (!isPlatformBrowser(this.platformId)) return;
     const L = (window as any).L;
     if (!L) return;
 
@@ -168,6 +189,7 @@ export class MapComponent
       tapHold: this.interactive,
     });
 
+    // Modern, clean map tiles
     L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       {
@@ -178,7 +200,7 @@ export class MapComponent
 
     if (this.interactive) {
       this.map.on('moveend', () => this.handleMapMoveEnd());
-      this.map.on('zoomend', () => this.handleMapMoveEnd());
+      this.map.on('zoomend', () => this.handleZoomEnd());
     }
 
     this.initMarkersLayer();
@@ -186,14 +208,35 @@ export class MapComponent
   }
 
   private handleMapMoveEnd(): void {
-    // Ignore if this is initial load or programmatic move
-    if (this.isInitialLoad || this.shouldIgnoreNextMove) {
+    if (this.isInitialLoad) return;
+
+    if (this.shouldIgnoreNextMove) {
+      this.shouldIgnoreNextMove = false;
       return;
     }
 
-    // Only trigger subject for user-initiated moves
     if (!this.isProgrammaticMove) {
       this.mapMoveSubject.next();
+    }
+  }
+
+  private handleZoomEnd(): void {
+    if (this.isInitialLoad) return;
+
+    console.log('🔍 Zoom changed to:', this.map.getZoom());
+
+    if (this.shouldIgnoreNextMove) {
+      this.shouldIgnoreNextMove = false;
+    }
+
+    if (!this.isProgrammaticMove) {
+      this.mapMoveSubject.next();
+    } else {
+      setTimeout(() => {
+        if (!this.isProgrammaticMove) {
+          this.emitMapMoveEvent();
+        }
+      }, 100);
     }
   }
 
@@ -206,7 +249,6 @@ export class MapComponent
     const latDiff = Math.abs(this.lastSetCenter.lat - newCenter.lat);
     const lngDiff = Math.abs(this.lastSetCenter.lng - newCenter.lng);
 
-    // Threshold: 0.001 degrees (~100 meters)
     return latDiff > 0.001 || lngDiff > 0.001;
   }
 
@@ -226,46 +268,11 @@ export class MapComponent
         showCoverageOnHover: false,
         zoomToBoundsOnClick: true,
         disableClusteringAtZoom: 18,
+        // Use our custom cluster icon
         iconCreateFunction: (cluster: any) => {
-          // Recursively count all actual markers (not sub-clusters)
-          const count = this.countAllMarkersRecursive(cluster);
-
-          console.log('Cluster created:', {
-            count,
-            childCount: cluster.getChildCount(),
-            getAllChildMarkers: cluster.getAllChildMarkers()?.length,
-            zoom: this.map?.getZoom(),
-          });
-
-          // Dynamic sizing based on count
-          let size = 40;
-          let fontSize = '14px';
-          if (count >= 100) {
-            size = 50;
-            fontSize = '16px';
-          } else if (count >= 50) {
-            size = 45;
-            fontSize = '15px';
-          }
-
-          return L.divIcon({
-            html: `<div style="
-              background: #2196F3;
-              width: ${size}px;
-              height: ${size}px;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-weight: bold;
-              font-size: ${fontSize};
-              border: 3px solid white;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            ">${count}</div>`,
-            className: 'marker-cluster-custom',
-            iconSize: [size, size],
-          });
+          const count =
+            cluster.getAllChildMarkers()?.length || cluster.getChildCount();
+          return this.mapService.createClusterIcon(L, count, false);
         },
       });
     } else {
@@ -275,62 +282,85 @@ export class MapComponent
     this.markersLayer.addTo(this.map);
   }
 
-  /**
-   * Recursively count all markers within a cluster, drilling through nested clusters
-   */
-  private countAllMarkersRecursive(cluster: any): number {
-    let count = 0;
-    const children = cluster.getAllChildMarkers
-      ? cluster.getAllChildMarkers()
-      : [];
-
-    // If getAllChildMarkers works, use it
-    if (children.length > 0) {
-      return children.length;
-    }
-
-    // Otherwise, manually traverse the cluster tree
-    const childClusters = cluster.getChildClusters
-      ? cluster.getChildClusters()
-      : [];
-
-    if (childClusters.length === 0) {
-      // This is a leaf cluster with only markers
-      return cluster.getChildCount();
-    }
-
-    // Recursively count markers in child clusters
-    childClusters.forEach((childCluster: any) => {
-      count += this.countAllMarkersRecursive(childCluster);
-    });
-
-    return count;
-  }
-
   private updateMarkers(): void {
     if (!isPlatformBrowser(this.platformId)) return;
     const L = (window as any).L;
     if (!L || !this.map || !this.markersLayer) return;
 
-    console.log('📍 Updating markers, total count:', this.markers.length);
-
-    // Clear existing markers
     this.markersLayer.clearLayers();
     this.markerInstances.clear();
 
-    // Batch add all markers
+    // Render backend clusters if present (STATE/COUNTRY tier)
+    if (this.clusters && this.clusters.length > 0) {
+      this.renderBackendClusters();
+    } else {
+      // Render individual markers (CITY tier or zoomed in)
+      this.renderIndividualMarkers();
+    }
+  }
+
+  private renderBackendClusters(): void {
+    const L = (window as any).L;
+    if (!L) return;
+
+    console.log(
+      '🎨 Rendering',
+      this.clusters.length,
+      'backend clusters with modern icons'
+    );
+
+    this.clusters.forEach((cluster) => {
+      const icon = this.mapService.createClusterIcon(L, cluster.count, true);
+
+      const marker = L.marker([cluster.lat, cluster.lng], { icon });
+
+      // Show count in popup on hover
+      const popupContent = this.mapService.createClusterPopupContent(
+        cluster.count,
+        cluster.name
+      );
+
+      marker.bindPopup(popupContent, {
+        maxWidth: 200,
+        className: 'cluster-popup',
+      });
+
+      if (this.interactive) {
+        marker.on('click', () => {
+          this.clusterClicked.emit(cluster);
+        });
+      }
+
+      this.markersLayer.addLayer(marker);
+      this.markerInstances.set(cluster.id, marker);
+    });
+  }
+
+  private renderIndividualMarkers(): void {
+    const L = (window as any).L;
+    if (!L) return;
+
+    console.log(
+      '🎨 Rendering',
+      this.markers.length,
+      'individual markers with modern icons'
+    );
+
     const markersToAdd: any[] = [];
 
     this.markers.forEach((markerData) => {
       const isSelected = markerData.id === this.selectedMarkerId;
-      const icon = this.mapService.createMarkerIcon(
-        L,
-        markerData.type,
-        isSelected
-      );
-      if (!icon) return;
+
+      // ✅ Extract a single string from markerData.type (since it's string[])
+      const markerType =
+        Array.isArray(markerData.type) && markerData.type.length > 0
+          ? markerData.type[0]
+          : 'default'; // fallback if array empty or missing
+
+      const icon = this.mapService.createMarkerIcon(L, markerType, isSelected);
 
       const marker = L.marker([markerData.lat, markerData.lng], { icon });
+
       marker.bindPopup(this.mapService.createPopupContent(markerData), {
         maxWidth: 250,
         className: 'custom-popup',
@@ -344,16 +374,12 @@ export class MapComponent
       markersToAdd.push(marker);
     });
 
-    console.log('📍 Adding markers to layer:', markersToAdd.length);
-
-    // Add all markers at once for better clustering
     if (this.enableClustering && this.interactive) {
       this.markersLayer.addLayers(markersToAdd);
     } else {
       markersToAdd.forEach((marker) => this.markersLayer.addLayer(marker));
     }
 
-    // Open popup for selected marker
     if (
       this.selectedMarkerId &&
       this.markerInstances.has(this.selectedMarkerId)
@@ -373,21 +399,17 @@ export class MapComponent
       if (!markerData) return;
 
       const isSelected = id === this.selectedMarkerId;
-      const icon = this.mapService.createMarkerIcon(
-        L,
-        markerData.type,
-        isSelected
-      );
-      if (!icon) return;
+
+      // ✅ Safely extract a single string from the array
+      const markerType =
+        Array.isArray(markerData.type) && markerData.type.length > 0
+          ? markerData.type[0]
+          : 'default'; // fallback if array empty
+
+      const icon = this.mapService.createMarkerIcon(L, markerType, isSelected);
 
       marker.setIcon(icon);
-
-      if (isSelected) {
-        marker.openPopup();
-        // Don't pan to marker here - let container handle flyTo
-      } else {
-        marker.closePopup();
-      }
+      isSelected ? marker.openPopup() : marker.closePopup();
     });
   }
 
@@ -396,17 +418,21 @@ export class MapComponent
 
     const center = this.map.getCenter();
     const bounds = this.mapService.calculateBounds(this.map);
+    const zoom = this.map.getZoom();
+
+    console.log('📤 Emitting map move event:', {
+      zoom,
+      bounds,
+      center: { lat: center.lat, lng: center.lng },
+    });
 
     this.mapMoved.emit({
       bounds,
       center: { lat: center.lat, lng: center.lng },
-      zoom: this.map.getZoom(),
+      zoom,
     });
   }
 
-  /**
-   * Fly to a location - marks as programmatic move to prevent feedback loop
-   */
   flyTo(lat: number, lng: number, zoom: number = 16): void {
     if (!this.map) return;
 
@@ -419,14 +445,11 @@ export class MapComponent
 
     this.lastSetCenter = { lat, lng };
 
-    // Wait for animation to complete
     setTimeout(() => {
       this.openPopupAtLocation(lat, lng);
 
-      // Reset flags after animation and popup open
       setTimeout(() => {
         this.isProgrammaticMove = false;
-        this.shouldIgnoreNextMove = false;
       }, 200);
     }, 1600);
   }
@@ -442,12 +465,20 @@ export class MapComponent
     const bounds = this.map.getBounds();
     if (!bounds) return null;
 
-    return {
+    const result = {
       north: bounds.getNorth(),
       south: bounds.getSouth(),
       east: bounds.getEast(),
       west: bounds.getWest(),
     };
+
+    console.log('📦 Current map bounds:', result);
+
+    return result;
+  }
+
+  getCurrentZoom(): number {
+    return this.map?.getZoom() || this.zoom;
   }
 
   private openPopupAtLocation(lat: number, lng: number): void {

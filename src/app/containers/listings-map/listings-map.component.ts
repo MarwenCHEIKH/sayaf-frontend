@@ -1,3 +1,4 @@
+// src/app/containers/listings-map/listings-map.component.ts
 import {
   Component,
   OnInit,
@@ -16,6 +17,8 @@ import { takeUntil, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { ListingsActions } from '../../store/listings/listings.actions';
 import {
   selectListings,
+  selectClusters,
+  selectListingsTier,
   selectListingsHasMore,
   selectListingsLoading,
   selectSelectedListingId,
@@ -26,8 +29,8 @@ import { ListingWithPhotos } from '../../models/listing.model';
 import { MapComponent } from '../../features/map/map.component';
 import { ListingsComponent } from '../../features/listings/listings.component';
 import { MapService } from '../../services/map-service/map.service';
+import { ClusterMarker } from '../../services/listing-service/listing.service';
 import { RouterModule } from '@angular/router';
-import { bounds } from 'leaflet';
 
 @Component({
   selector: 'app-listings-map-container',
@@ -42,30 +45,36 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   private mapService = inject(MapService);
   private destroy$ = new Subject<void>();
   private platformId = inject(PLATFORM_ID);
-  private shouldRecenter = true;
 
   @ViewChild(MapComponent) mapComponent?: MapComponent;
 
-  // Store signals - single source of truth
   displayedListings = this.store.selectSignal(selectListings);
+  displayedClusters = this.store.selectSignal(selectClusters);
+  currentTier = this.store.selectSignal(selectListingsTier);
   loading = this.store.selectSignal(selectListingsLoading);
   hasMore = this.store.selectSignal(selectListingsHasMore);
   selectedId = this.store.selectSignal(selectSelectedListingId);
 
-  // UI state
   mapCenter = signal({ lat: 36.8065, lng: 10.1815 });
   isMobile = signal(false);
   panelExpanded = signal(false);
   searchAsMapMoves = signal(false);
 
-  // Computed: markers synced with displayed listings
   markers = computed(() => {
     const listings = this.displayedListings();
+    const tier = this.currentTier();
+
+    // Only show individual markers at CITY tier (zoomed in)
+    if (tier === 'COUNTRY' || tier === 'STATE') {
+      return [];
+    }
+
     const markers: MarkerData[] = listings.reduce<MarkerData[]>(
       (acc, listing) => {
-        const coords = this.mapService.parsePostGISPoint(
-          listing.location_point
-        );
+        const coords = listing.location_point
+          ? this.mapService.parsePostGISPoint(listing.location_point)
+          : null;
+
         if (!coords) return acc;
 
         acc.push({
@@ -84,10 +93,15 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
     return markers;
   });
 
-  // Computed: preview listings for mobile (first 5)
+  clusters = computed(() => {
+    return this.displayedClusters();
+  });
+
   previewListings = computed(() => {
     return this.displayedListings().slice(0, 5);
   });
+
+  infiniteScrollEnabled = computed(() => !this.searchAsMapMoves());
 
   private touchStartY = 0;
   private touchCurrentY = 0;
@@ -114,7 +128,6 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // Event handlers
   onTypeFilterChange(types: string[]): void {
     this.store.dispatch(
       ListingsActions.updateFilters({
@@ -127,12 +140,10 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
     sortBy: 'rating' | 'price' | 'reviewScore';
     order: 'asc' | 'desc';
   }): void {
-    // Handle sorting in the component or dispatch to store if needed
-    // For now, sorting can remain client-side in the listings component
+    console.log('Sort changed:', event);
   }
 
   onReviewScoreChange(score: number): void {
-    // Add review score filter to store if needed
     console.log('Review score filter:', score);
   }
 
@@ -145,25 +156,51 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   }
 
   onMapMoved(event: MapMoveEvent): void {
-    // Only update bounds if "Search as map moves" is enabled
-    if (this.searchAsMapMoves()) {
-      this.store.dispatch(
-        ListingsActions.updateMapBounds({ bounds: event.bounds })
-      );
-      console.log({ bounds: event.bounds });
+    if (!this.searchAsMapMoves()) return;
+
+    const filters = this.store.selectSignal(selectCurrentLocationFilters)();
+    if (!filters) return;
+
+    console.log('🗺️ Map moved event received:', {
+      zoom: event.zoom,
+      bounds: event.bounds,
+      center: event.center,
+    });
+
+    this.store.dispatch(
+      ListingsActions.loadListings({
+        filters: { ...filters, bounds: event.bounds },
+        reset: true,
+        limit: 0,
+        zoom: event.zoom,
+      })
+    );
+  }
+
+  toggleSearchAsMapMoves(): void {
+    const newValue = !this.searchAsMapMoves();
+    this.searchAsMapMoves.set(newValue);
+
+    console.log('🔄 Search as map moves:', newValue ? 'ENABLED' : 'DISABLED');
+
+    if (newValue && this.mapComponent) {
+      const bounds = this.mapComponent.getBounds();
+      const zoom = this.mapComponent.getCurrentZoom();
+      const filters = this.store.selectSignal(selectCurrentLocationFilters)();
+
+      if (bounds && filters) {
+        this.store.dispatch(
+          ListingsActions.loadListings({
+            filters: { ...filters, bounds },
+            reset: true,
+            limit: 0,
+            zoom,
+          })
+        );
+      }
     }
   }
-  toggleSearchAsMapMoves(): void {
-    this.searchAsMapMoves.update((v) => !v);
 
-    // // If enabling, immediately search with current map bounds
-    // if (this.searchAsMapMoves() && this.mapComponent) {
-    //   const bounds = this.mapComponent.getBounds();
-    //   if (bounds) {
-    //     this.store.dispatch(ListingsActions.updateMapBounds({ bounds }));
-    //   }
-    // }
-  }
   onMarkerClick(id: number): void {
     this.store.dispatch(ListingsActions.selectListing({ id }));
 
@@ -172,27 +209,71 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
     }
   }
 
+  onClusterClick(cluster: ClusterMarker): void {
+    console.log('🎯 Cluster clicked, zooming in:', cluster);
+
+    if (this.mapComponent) {
+      const currentTier = this.currentTier();
+      const targetZoom = currentTier === 'COUNTRY' ? 10 : 14;
+
+      // Fly to cluster location
+      this.mapComponent.flyTo(cluster.lat, cluster.lng, targetZoom);
+
+      // Wait for animation to complete, then trigger load with new bounds
+      setTimeout(() => {
+        if (this.searchAsMapMoves() && this.mapComponent) {
+          const bounds = this.mapComponent.getBounds();
+          const zoom = this.mapComponent.getCurrentZoom();
+          const filters = this.store.selectSignal(
+            selectCurrentLocationFilters
+          )();
+
+          if (bounds && filters) {
+            console.log('📍 Cluster zoom complete, loading with new bounds:', {
+              bounds,
+              zoom,
+              tier: currentTier === 'COUNTRY' ? 'STATE' : 'CITY',
+            });
+
+            this.store.dispatch(
+              ListingsActions.loadListings({
+                filters: { ...filters, bounds },
+                reset: true,
+                limit: 0,
+                zoom,
+              })
+            );
+          }
+        }
+      }, 1700); // Wait for flyTo animation (1.5s) + buffer
+    }
+  }
+
   onListingClick(id: number): void {
     this.store.dispatch(ListingsActions.selectListing({ id }));
 
-    // Find the listing and fly to its location
     const listing = this.displayedListings().find((l) => l.id === id);
     if (listing) {
-      const coords = this.mapService.parsePostGISPoint(listing.location_point);
+      const coords = listing.location_point
+        ? this.mapService.parsePostGISPoint(listing.location_point)
+        : null;
+
       if (coords && this.mapComponent) {
-        // Fly to the listing location
-        console.log(coords);
         this.mapComponent.flyTo(coords.lat, coords.lng, 16);
       }
     }
 
-    // Scroll to listing on mobile
     if (this.isMobile()) {
       this.scrollToListing(id);
     }
   }
 
   onScroll(event: Event): void {
+    if (this.searchAsMapMoves()) {
+      console.log('⚠️ Infinite scroll disabled (search as map moves is ON)');
+      return;
+    }
+
     const container = event.target as HTMLElement;
     const scrollPosition = container.scrollTop + container.clientHeight;
     const scrollThreshold = container.scrollHeight - 200;
@@ -209,33 +290,25 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   onLoadMore(): void {
     if (this.loading() || !this.hasMore()) return;
 
+    if (this.searchAsMapMoves()) {
+      console.log('⚠️ Load more disabled (search as map moves is ON)');
+      return;
+    }
+
     const filters = this.store.selectSignal(selectCurrentLocationFilters)();
     if (!filters) return;
 
-    console.log('📜 Load more triggered');
+    console.log('📜 Loading more listings (infinite scroll)');
 
-    if (this.searchAsMapMoves()) {
-      // Fetch all listings in bounds at once
-      this.store.dispatch(
-        ListingsActions.loadListings({
-          filters,
-          reset: true, // reset makes sure we replace any previous incomplete list
-          limit: 0, // convention: 0 or undefined = fetch all
-        })
-      );
-    } else {
-      // Normal infinite scroll behavior
-      this.store.dispatch(
-        ListingsActions.loadListings({
-          filters,
-          reset: false,
-          limit: 20,
-        })
-      );
-    }
+    this.store.dispatch(
+      ListingsActions.loadListings({
+        filters,
+        reset: false,
+        limit: 20,
+      })
+    );
   }
 
-  //utility function to Compute centroid from displayed listings
   private computeListingsCenter(
     listings: ListingWithPhotos[]
   ): { lat: number; lng: number } | null {
@@ -246,7 +319,10 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
     let count = 0;
 
     for (const listing of listings) {
-      const coords = this.mapService.parsePostGISPoint(listing.location_point);
+      const coords = listing.location_point
+        ? this.mapService.parsePostGISPoint(listing.location_point)
+        : null;
+
       if (!coords) continue;
 
       sumLat += coords.lat;
@@ -299,11 +375,24 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
             ]);
           }
 
+          const limit = this.searchAsMapMoves() ? 0 : 20;
+          const zoom =
+            this.searchAsMapMoves() && this.mapComponent
+              ? this.mapComponent.getCurrentZoom()
+              : undefined;
+
+          console.log(
+            `🔄 Filters changed, loading listings (limit: ${
+              limit === 0 ? 'ALL' : limit
+            }${zoom ? ', zoom: ' + zoom : ''})`
+          );
+
           this.store.dispatch(
             ListingsActions.loadListings({
               filters,
               reset: true,
-              limit: this.searchAsMapMoves() ? 0 : 20,
+              limit,
+              zoom,
             })
           );
 
@@ -315,7 +404,6 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe(([listings, bounds]) => {
-        // Only auto-center when "Search as map moves" is disabled
         if (!this.searchAsMapMoves()) {
           const center = this.computeListingsCenter(listings);
 
@@ -338,7 +426,6 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  // Mobile panel handlers
   togglePanel(): void {
     this.panelExpanded.update((v) => !v);
   }

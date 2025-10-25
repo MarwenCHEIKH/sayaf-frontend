@@ -27,8 +27,11 @@ import { ListingWithPhotos } from '../../models/listing.model';
 export class ListingsComponent {
   // Inputs from parent container
   @Input({ required: true }) set listings(value: ListingWithPhotos[]) {
-    this._listings = value;
-    this.initializeImageIndices(value);
+    const filtered = value.filter(
+      (listing) => listing.photoUrls?.length && listing.photoUrls.length > 0
+    );
+    this._listings = filtered;
+    this.initializeImageIndices(filtered);
   }
   get listings(): ListingWithPhotos[] {
     return this._listings;
@@ -206,93 +209,135 @@ export class ListingsComponent {
       : 'Place';
   }
 
-  getOpeningHoursText(listing: ListingWithPhotos): string {
-    const hours = listing.opening_hours;
-    if (!hours || !Array.isArray(hours.periods) || hours.periods.length === 0) {
+  getOpeningHoursText(openingHours: any[] | null | undefined): string {
+    // Handle null, undefined, or empty array
+    if (
+      !openingHours ||
+      !Array.isArray(openingHours) ||
+      openingHours.length === 0
+    ) {
       return 'Hours not available';
     }
 
-    const now = new Date();
-    const localDay = now.getDay(); // 0 = Sunday ... 6 = Saturday
-    const localMinutes = now.getHours() * 60 + now.getMinutes();
+    try {
+      // Filter out any null/undefined items and validate structure
+      const validHours = openingHours.filter(
+        (h) => h && typeof h === 'object' && h.day && h.open && h.close
+      );
 
-    const periods = hours.periods.map((p: any) => ({
-      openDay: p.open.day,
-      openMinutes: p.open.hour * 60 + (p.open.minute || 0),
-      closeDay: p.close.day,
-      closeMinutes: p.close.hour * 60 + (p.close.minute || 0),
-    }));
-
-    // Check if open now
-    for (const p of periods) {
-      if (p.openDay === localDay) {
-        // Case 1: closes same day
-        if (
-          p.closeDay === p.openDay &&
-          localMinutes >= p.openMinutes &&
-          localMinutes < p.closeMinutes
-        ) {
-          const minsLeft = p.closeMinutes - localMinutes;
-          const hoursLeft = Math.floor(minsLeft / 60);
-          const minsRem = minsLeft % 60;
-          return `Open now (closes in ${hoursLeft}h ${minsRem}m)`;
-        }
-        // Case 2: closes next day (e.g., 22:00 → 02:00)
-        if (p.closeDay !== p.openDay && localMinutes >= p.openMinutes) {
-          const closeAfterMidnight =
-            p.closeMinutes + 24 * 60 * (p.closeDay - p.openDay);
-          const minsLeft = closeAfterMidnight - localMinutes;
-          const hoursLeft = Math.floor(minsLeft / 60);
-          const minsRem = minsLeft % 60;
-          return `Open now (closes in ${hoursLeft}h ${minsRem}m)`;
-        }
+      if (validHours.length === 0) {
+        return 'Hours not available';
       }
 
-      // Handle case: open period spans midnight (yesterday’s open still active)
-      if (
-        p.closeDay !== p.openDay &&
-        localDay === p.closeDay &&
-        localMinutes < p.closeMinutes
-      ) {
-        const minsLeft = p.closeMinutes - localMinutes;
-        const hoursLeft = Math.floor(minsLeft / 60);
-        const minsRem = minsLeft % 60;
-        return `Open now (closes in ${hoursLeft}h ${minsRem}m)`;
-      }
+      // Map to formatted strings
+      const formattedHours = validHours.map((hours) => {
+        const day = hours.day || 'N/A';
+        const open = hours.open || 'N/A';
+        const close = hours.close || 'N/A';
+        return `${day}: ${open} - ${close}`;
+      });
+
+      // Join with line breaks or commas depending on your UI needs
+      return formattedHours.join(', ');
+    } catch (error) {
+      console.error('Error formatting opening hours:', error);
+      return 'Hours not available';
     }
-
-    // If not open now → find next opening
-    for (let i = 0; i < 7; i++) {
-      const dayIndex = (localDay + i) % 7;
-      const nextPeriod = periods.find((p: any) => p.openDay === dayIndex);
-      if (nextPeriod) {
-        let diffDays = i;
-        let diffMinutes = nextPeriod.openMinutes - localMinutes;
-        if (diffMinutes < 0 || i > 0) diffMinutes += diffDays * 24 * 60;
-
-        const totalMins = diffMinutes;
-        const hours = Math.floor(totalMins / 60);
-        const mins = totalMins % 60;
-
-        if (diffDays === 0) return `Opens in ${hours}h ${mins}m`;
-        if (diffDays === 1)
-          return `Opens tomorrow at ${this.formatTime(nextPeriod.openMinutes)}`;
-        return `Opens in ${diffDays} days at ${this.formatTime(
-          nextPeriod.openMinutes
-        )}`;
-      }
-    }
-
-    return 'Closed';
   }
 
-  /** Format minutes since midnight → "12:30 PM" */
-  private formatTime(totalMinutes: number): string {
-    let hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12 || 12;
-    return `${hours}:${mins.toString().padStart(2, '0')} ${ampm}`;
+  /**
+   * Alternative: Check if listing is currently open
+   * @param openingHours - The opening hours array
+   * @returns Boolean indicating if open now
+   */
+  isOpenNow(openingHours: any[] | null | undefined): boolean {
+    if (
+      !openingHours ||
+      !Array.isArray(openingHours) ||
+      openingHours.length === 0
+    ) {
+      return false;
+    }
+
+    try {
+      const now = new Date();
+      const dayNames = [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+      ];
+      const currentDay = dayNames[now.getDay()];
+      const currentTime = now.getHours() * 60 + now.getMinutes(); // minutes since midnight
+
+      // Find today's hours
+      const todayHours = openingHours.find(
+        (h) => h && h.day && h.day.toLowerCase() === currentDay.toLowerCase()
+      );
+
+      if (!todayHours || !todayHours.open || !todayHours.close) {
+        return false;
+      }
+
+      // Parse time strings (assuming format like "09:00" or "9:00 AM")
+      const parseTime = (timeStr: string): number => {
+        const [hours, minutes] = timeStr.split(':').map((s) => parseInt(s, 10));
+        return (hours || 0) * 60 + (minutes || 0);
+      };
+
+      const openTime = parseTime(todayHours.open);
+      const closeTime = parseTime(todayHours.close);
+
+      return currentTime >= openTime && currentTime <= closeTime;
+    } catch (error) {
+      console.error('Error checking if open now:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get today's opening hours only
+   * @param openingHours - The opening hours array
+   * @returns Today's hours as string or fallback
+   */
+  getTodayHours(openingHours: any[] | null | undefined): string {
+    if (
+      !openingHours ||
+      !Array.isArray(openingHours) ||
+      openingHours.length === 0
+    ) {
+      return 'Hours not available';
+    }
+
+    try {
+      const now = new Date();
+      const dayNames = [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+      ];
+      const currentDay = dayNames[now.getDay()];
+
+      const todayHours = openingHours.find(
+        (h) => h && h.day && h.day.toLowerCase() === currentDay.toLowerCase()
+      );
+
+      if (!todayHours || !todayHours.open || !todayHours.close) {
+        return 'Closed today';
+      }
+
+      return `${todayHours.open} - ${todayHours.close}`;
+    } catch (error) {
+      console.error('Error getting today hours:', error);
+      return 'Hours not available';
+    }
   }
 
   onLikeClick(listing: ListingWithPhotos, event: Event): void {

@@ -3,6 +3,7 @@ import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { Listing } from '../../models/listing.model';
 import { ListingsFilters } from './listings.state';
 import { MapBounds } from '../../models/map.model';
+import { ClusterMarker } from '../../services/listing-service/listing.service';
 
 export const ListingsActions = createActionGroup({
   source: 'Listings',
@@ -11,9 +12,12 @@ export const ListingsActions = createActionGroup({
       filters: Partial<ListingsFilters>;
       reset?: boolean;
       limit?: number;
+      zoom?: number; // NEW: optional zoom for tier-based fetching
     }>(),
     'Load Listings Success': props<{
-      listings: Listing[];
+      listings?: Listing[];
+      clusters?: ClusterMarker[];
+      tier?: 'COUNTRY' | 'STATE' | 'CITY';
       total: number;
       append: boolean;
     }>(),

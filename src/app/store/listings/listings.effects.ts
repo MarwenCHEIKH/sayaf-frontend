@@ -17,24 +17,31 @@ export const loadListings = createEffect(
     return actions$.pipe(
       ofType(ListingsActions.loadListings),
       withLatestFrom(store.select(selectListingsPage)),
-      switchMap(([{ filters, reset, limit }, currentPage]) => {
-        // Determine page and limit
-        const isFullFetch = limit === 0; // convention: limit=0 means fetch all
+      switchMap(([{ filters, reset, limit, zoom }, currentPage]) => {
+        const isFullFetch = limit === 0;
         const pageToLoad = isFullFetch || reset ? 1 : currentPage + 1;
-        const fetchLimit = isFullFetch ? undefined : limit ?? 20;
+        const fetchLimit = isFullFetch ? 0 : limit ?? 20;
 
         return listingService
-          .getListingsWithBBox(filters.bounds!, pageToLoad, fetchLimit, {
-            type: filters.type,
-            query: filters.query,
-            locationName: filters.locationName,
-          })
+          .getListingsWithBBox(
+            filters.bounds!,
+            pageToLoad,
+            fetchLimit,
+            {
+              type: filters.type,
+              query: filters.query,
+              locationName: filters.locationName,
+            },
+            zoom
+          )
           .pipe(
             map((response) =>
               ListingsActions.loadListingsSuccess({
-                listings: response.listings,
+                listings: response.listings || [],
+                clusters: response.clusters || [],
+                tier: response.tier,
                 total: response.total,
-                append: !reset && !isFullFetch, // append only for paginated scroll
+                append: !reset && !isFullFetch,
               })
             ),
             catchError((error) =>
@@ -51,23 +58,6 @@ export const loadListings = createEffect(
   { functional: true }
 );
 
-// Trigger load when map bounds change
-export const updateMapBounds = createEffect(
-  (actions$ = inject(Actions)) => {
-    return actions$.pipe(
-      ofType(ListingsActions.updateMapBounds),
-      map(({ bounds }) =>
-        ListingsActions.loadListings({
-          filters: { bounds },
-          reset: true,
-        })
-      )
-    );
-  },
-  { functional: true }
-);
-
 export const listingsEffects = {
   loadListings,
-  updateMapBounds,
 };

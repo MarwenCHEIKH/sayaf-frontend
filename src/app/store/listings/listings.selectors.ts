@@ -10,6 +10,16 @@ export const selectListings = createSelector(
   (state) => state.items
 );
 
+export const selectClusters = createSelector(
+  selectListingsState,
+  (state) => state.clusters
+);
+
+export const selectListingsTier = createSelector(
+  selectListingsState,
+  (state) => state.tier
+);
+
 export const selectListingsLoading = createSelector(
   selectListingsState,
   (state) => state.loading
@@ -47,5 +57,5 @@ export const selectListingsTotal = createSelector(
 
 export const selectMapBounds = createSelector(
   selectListingsState,
-  (state) => state.filters.bounds // Returns { north, south, east, west } | undefined
+  (state) => state.filters.bounds
 );

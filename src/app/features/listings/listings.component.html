@@ -429,13 +429,10 @@
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-          <span
-            class="detail-text"
-            [class.open]="listing.opening_hours?.open_now"
-            [class.closed]="!listing.opening_hours?.open_now"
-          >
-            {{ getOpeningHoursText(listing) }}
-          </span>
+          <span class="label">Hours:</span>
+          <span class="hours-text">{{
+            getOpeningHoursText(listing.opening_hours)
+          }}</span>
         </div>
       </div>
     </div>
