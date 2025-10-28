@@ -27,11 +27,8 @@ import { ListingWithPhotos } from '../../models/listing.model';
 export class ListingsComponent {
   // Inputs from parent container
   @Input({ required: true }) set listings(value: ListingWithPhotos[]) {
-    const filtered = value.filter(
-      (listing) => listing.photoUrls?.length && listing.photoUrls.length > 0
-    );
-    this._listings = filtered;
-    this.initializeImageIndices(filtered);
+    this._listings = value;
+    this.initializeImageIndices(value);
   }
   get listings(): ListingWithPhotos[] {
     return this._listings;

@@ -95,5 +95,9 @@ export const listingsReducer = createReducer(
     })
   ),
 
-  on(ListingsActions.resetListings, (): ListingsState => initialListingsState)
+  on(ListingsActions.resetListings, (): ListingsState => initialListingsState),
+  on(ListingsActions.setCurrentTier, (state, { tier }) => ({
+    ...state,
+    currentTier: tier,
+  }))
 );

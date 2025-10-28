@@ -9,6 +9,7 @@ import {
   computed,
   PLATFORM_ID,
   ViewChild,
+  effect,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Store } from '@ngrx/store';
@@ -106,14 +107,42 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   private touchStartY = 0;
   private touchCurrentY = 0;
   private resizeListener?: () => void;
+  private resizeTimeout?: any;
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.isMobile.set(window.innerWidth <= 768);
 
       this.resizeListener = () => {
-        this.isMobile.set(window.innerWidth <= 768);
+        const wasMobile = this.isMobile();
+        const nowMobile = window.innerWidth <= 768;
+
+        this.isMobile.set(nowMobile);
+
+        // If layout changed, give map time to resize
+        if (wasMobile !== nowMobile) {
+          console.log(
+            'Layout changed from',
+            wasMobile ? 'mobile' : 'desktop',
+            'to',
+            nowMobile ? 'mobile' : 'desktop'
+          );
+
+          // Clear any existing timeout
+          if (this.resizeTimeout) {
+            clearTimeout(this.resizeTimeout);
+          }
+
+          // Wait for Angular to re-render, then invalidate map size
+          this.resizeTimeout = setTimeout(() => {
+            if (this.mapComponent) {
+              console.log('Invalidating map size after layout change');
+              this.mapComponent.forceResize();
+            }
+          }, 100);
+        }
       };
+
       window.addEventListener('resize', this.resizeListener);
     }
 
@@ -123,6 +152,9 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (isPlatformBrowser(this.platformId) && this.resizeListener) {
       window.removeEventListener('resize', this.resizeListener);
+    }
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
     }
     this.destroy$.next();
     this.destroy$.complete();
@@ -212,41 +244,59 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   onClusterClick(cluster: ClusterMarker): void {
     console.log('🎯 Cluster clicked, zooming in:', cluster);
 
-    if (this.mapComponent) {
-      const currentTier = this.currentTier();
-      const targetZoom = currentTier === 'COUNTRY' ? 10 : 14;
+    if (!this.mapComponent) return;
 
-      // Fly to cluster location
-      this.mapComponent.flyTo(cluster.lat, cluster.lng, targetZoom);
+    const currentZoom = this.mapComponent.getCurrentZoom();
+    let targetZoom: number;
+    let nextTier: 'COUNTRY' | 'STATE' | 'CITY';
 
-      // Wait for animation to complete, then trigger load with new bounds
-      setTimeout(() => {
-        if (this.searchAsMapMoves() && this.mapComponent) {
-          const bounds = this.mapComponent.getBounds();
-          const zoom = this.mapComponent.getCurrentZoom();
-          const filters = this.store.selectSignal(
-            selectCurrentLocationFilters
-          )();
+    const currentTier = this.currentTier();
 
-          if (bounds && filters) {
-            console.log('📍 Cluster zoom complete, loading with new bounds:', {
-              bounds,
-              zoom,
-              tier: currentTier === 'COUNTRY' ? 'STATE' : 'CITY',
-            });
-
-            this.store.dispatch(
-              ListingsActions.loadListings({
-                filters: { ...filters, bounds },
-                reset: true,
-                limit: 0,
-                zoom,
-              })
-            );
-          }
-        }
-      }, 1700); // Wait for flyTo animation (1.5s) + buffer
+    // Determine next tier and zoom based on current zoom
+    if (currentTier === 'COUNTRY') {
+      targetZoom = currentZoom < 10 ? 10 : 12; // if already >=10, zoom further
+      nextTier = 'STATE';
+    } else if (currentTier === 'STATE') {
+      targetZoom = currentZoom < 14 ? 14 : 16;
+      nextTier = 'CITY';
+    } else {
+      targetZoom = currentZoom + 2; // just zoom in more
+      nextTier = 'CITY';
     }
+
+    // Fly to cluster
+    this.mapComponent.flyTo(cluster.lat, cluster.lng, targetZoom);
+
+    // Wait for animation to complete
+    setTimeout(() => {
+      if (this.searchAsMapMoves() && this.mapComponent) {
+        const bounds = this.mapComponent.getBounds();
+        const zoom = this.mapComponent.getCurrentZoom();
+        const filters = this.store.selectSignal(selectCurrentLocationFilters)();
+
+        if (bounds && filters) {
+          console.log('📍 Cluster zoom complete, loading with new bounds:', {
+            bounds,
+            zoom,
+            tier: nextTier,
+          });
+
+          this.store.dispatch(
+            ListingsActions.loadListings({
+              filters: { ...filters, bounds },
+              reset: true,
+              limit: 0,
+              zoom,
+            })
+          );
+
+          // Optionally, update current tier in the store if you track it
+          this.store.dispatch(
+            ListingsActions.setCurrentTier({ tier: nextTier })
+          );
+        }
+      }
+    }, 1700);
   }
 
   onListingClick(id: number): void {
@@ -258,13 +308,29 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
         ? this.mapService.parsePostGISPoint(listing.location_point)
         : null;
 
-      if (coords && this.mapComponent) {
-        this.mapComponent.flyTo(coords.lat, coords.lng, 16);
-      }
-    }
+      console.log('Listing coords:', coords?.lat, coords?.lng);
 
-    if (this.isMobile()) {
-      this.scrollToListing(id);
+      if (
+        coords &&
+        !isNaN(coords.lat) &&
+        !isNaN(coords.lng) &&
+        this.mapComponent
+      ) {
+        // Convert to numbers to be safe
+        const lat = Number(coords.lat);
+        const lng = Number(coords.lng);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+          // Small delay on mobile to ensure map is ready
+          if (this.isMobile()) {
+            setTimeout(() => {
+              this.mapComponent?.flyTo(lat, lng, 16);
+            }, 50);
+          } else {
+            this.mapComponent.flyTo(lat, lng, 16);
+          }
+        }
+      }
     }
   }
 

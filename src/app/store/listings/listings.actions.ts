@@ -28,5 +28,6 @@ export const ListingsActions = createActionGroup({
     'Select Listing': props<{ id: number }>(),
     'Clear Selection': emptyProps(),
     'Reset Listings': emptyProps(),
+    'Set Current Tier': props<{ tier: string }>(),
   },
 });

@@ -1,6 +1,6 @@
 <div class="listings-map-container">
   <!-- Desktop layout -->
-  <div class="desktop-layout" [class.mobile-hidden]="isMobile()">
+  <div class="desktop-layout" *ngIf="!isMobile()">
     <div class="listings-panel" (scroll)="onScroll($event)">
       <app-listings
         [isMobileView]="false"
@@ -18,7 +18,7 @@
     </div>
 
     <div class="map-panel">
-      <!-- Search as map moves toggle -->
+      <!-- Map controls -->
       <div class="map-controls">
         <button
           class="search-toggle"
@@ -57,7 +57,7 @@
         </button>
       </div>
 
-      <!-- Tier indicator (only show when toggle is ON) -->
+      <!-- Tier indicator -->
       @if (searchAsMapMoves() && currentTier()) {
       <div class="tier-indicator">
         <span class="tier-badge">{{ currentTier() }}</span>
@@ -67,26 +67,30 @@
       </div>
       }
 
-      <app-map
-        [markers]="markers()"
-        [clusters]="clusters()"
-        [selectedMarkerId]="selectedId()"
-        [center]="mapCenter()"
-        [zoom]="13"
-        [interactive]="true"
-        [enableClustering]="true"
-        (mapMoved)="onMapMoved($event)"
-        (markerClicked)="onMarkerClick($event)"
-        (clusterClicked)="onClusterClick($event)"
-      />
+      <!-- SINGLE MAP INSTANCE - Shared between desktop and mobile -->
+      <div class="map-wrapper">
+        <app-map
+          #mapComponent
+          [markers]="markers()"
+          [clusters]="clusters()"
+          [selectedMarkerId]="selectedId()"
+          [center]="mapCenter()"
+          [zoom]="13"
+          [interactive]="true"
+          [enableClustering]="true"
+          (mapMoved)="onMapMoved($event)"
+          (markerClicked)="onMarkerClick($event)"
+          (clusterClicked)="onClusterClick($event)"
+        />
+      </div>
     </div>
   </div>
 
   <!-- Mobile layout -->
-  <div class="mobile-layout" [class.desktop-hidden]="!isMobile()">
+  <div class="mobile-layout" *ngIf="isMobile()">
     <!-- Fixed Map Section (Top 50vh) -->
-    <div class="mobile-map-fixed">
-      <!-- Search as map moves toggle -->
+    <div class="mobile-map-container">
+      <!-- Map controls -->
       <div class="map-controls">
         <button
           class="search-toggle"
@@ -125,25 +129,29 @@
         </button>
       </div>
 
-      <!-- Tier indicator (only show when toggle is ON) -->
+      <!-- Tier indicator -->
       @if (searchAsMapMoves() && currentTier()) {
       <div class="tier-indicator mobile">
         <span class="tier-badge">{{ currentTier() }}</span>
       </div>
       }
 
-      <app-map
-        [markers]="markers()"
-        [clusters]="clusters()"
-        [selectedMarkerId]="selectedId()"
-        [center]="mapCenter()"
-        [zoom]="13"
-        [interactive]="true"
-        [enableClustering]="true"
-        (mapMoved)="onMapMoved($event)"
-        (markerClicked)="onMarkerClick($event)"
-        (clusterClicked)="onClusterClick($event)"
-      />
+      <!-- SAME MAP INSTANCE - Reused from desktop -->
+      <div class="map-wrapper">
+        <app-map
+          #mapComponent
+          [markers]="markers()"
+          [clusters]="clusters()"
+          [selectedMarkerId]="selectedId()"
+          [center]="mapCenter()"
+          [zoom]="13"
+          [interactive]="true"
+          [enableClustering]="true"
+          (mapMoved)="onMapMoved($event)"
+          (markerClicked)="onMarkerClick($event)"
+          (clusterClicked)="onClusterClick($event)"
+        />
+      </div>
     </div>
 
     <!-- Scrollable Content Section (Bottom 50vh) -->

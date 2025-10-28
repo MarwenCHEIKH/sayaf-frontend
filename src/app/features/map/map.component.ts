@@ -91,7 +91,7 @@ export class MapComponent
   private markersLayer?: any;
   private markerInstances = new Map<number, any>();
   private mapMoveSubject = new Subject<void>();
-
+  private resizeObserver?: ResizeObserver;
   private isInitialLoad = true;
   private isProgrammaticMove = false;
   private shouldIgnoreNextMove = false;
@@ -116,6 +116,13 @@ export class MapComponent
         this.map?.invalidateSize();
         this.isInitialLoad = false;
       }, 100);
+    }
+    const mapContainer = document.getElementById('your-map-id');
+    if (mapContainer && this.map) {
+      this.resizeObserver = new ResizeObserver(() => {
+        this.map?.invalidateSize({ animate: false });
+      });
+      this.resizeObserver.observe(mapContainer);
     }
   }
 
@@ -166,6 +173,7 @@ export class MapComponent
     if (this.map) {
       this.map.remove();
     }
+    this.resizeObserver?.disconnect();
   }
 
   private initMap(): void {
@@ -433,25 +441,119 @@ export class MapComponent
     });
   }
 
-  flyTo(lat: number, lng: number, zoom: number = 16): void {
+  public forceResize(): void {
     if (!this.map) return;
+
+    console.log('Force resizing map...');
+
+    // Check actual container dimensions
+    const container = this.mapContainer.nativeElement;
+    console.log('Container dimensions:', {
+      offsetWidth: container.offsetWidth,
+      offsetHeight: container.offsetHeight,
+      clientWidth: container.clientWidth,
+      clientHeight: container.clientHeight,
+    });
+
+    // Multiple invalidations with delays
+    this.map.invalidateSize({ animate: false });
+
+    setTimeout(() => {
+      if (!this.map) return;
+      this.map.invalidateSize({ animate: false });
+
+      const size = this.map.getSize();
+      console.log('Map size after force resize:', size);
+    }, 100);
+  }
+
+  // Also update your flyTo method to be more robust:
+  flyTo(lat: number, lng: number, zoom: number = 16): void {
+    if (!this.map) {
+      console.error('Map not initialized');
+      return;
+    }
+
+    console.log('flyTo called:', { lat, lng, zoom });
 
     this.isProgrammaticMove = true;
     this.shouldIgnoreNextMove = true;
 
-    this.map.flyTo([lat, lng], zoom, {
-      duration: 1.5,
-    });
+    const hasValidSize = (): boolean => {
+      const size = this.map?.getSize();
+      return !!(size && size.x > 0 && size.y > 0);
+    };
 
-    this.lastSetCenter = { lat, lng };
+    const performFly = () => {
+      if (!this.map) return;
 
-    setTimeout(() => {
-      this.openPopupAtLocation(lat, lng);
+      const size = this.map.getSize();
+      console.log('Performing fly with map size:', size);
+
+      // If STILL no size, use setView as fallback
+      if (size.x === 0 || size.y === 0) {
+        console.warn('Map has no size, using setView instead of flyTo');
+        this.map.setView([lat, lng], zoom);
+        this.lastSetCenter = { lat, lng };
+
+        setTimeout(() => {
+          this.openPopupAtLocation(lat, lng);
+          this.isProgrammaticMove = false;
+        }, 100);
+        return;
+      }
+
+      // Normal flyTo with animation
+      this.map.flyTo([lat, lng], zoom, {
+        duration: 1.5,
+      });
+
+      this.lastSetCenter = { lat, lng };
 
       setTimeout(() => {
-        this.isProgrammaticMove = false;
-      }, 200);
-    }, 1600);
+        this.openPopupAtLocation(lat, lng);
+        setTimeout(() => {
+          this.isProgrammaticMove = false;
+        }, 200);
+      }, 1600);
+    };
+
+    // Check if map needs resizing
+    if (!hasValidSize()) {
+      console.log('Map has no size, attempting resize...');
+
+      const tryResize = (attempt: number = 0) => {
+        if (!this.map || attempt > 3) {
+          if (attempt > 3) {
+            console.warn('Max resize attempts reached, proceeding anyway');
+          }
+          performFly();
+          return;
+        }
+
+        this.map.invalidateSize({ animate: false });
+
+        requestAnimationFrame(() => {
+          if (!this.map) return;
+
+          const size = this.map.getSize();
+          console.log(`Resize attempt ${attempt + 1}, size:`, size);
+
+          if (size.x > 0 && size.y > 0) {
+            console.log('✅ Map now has valid size');
+            performFly();
+          } else {
+            setTimeout(() => tryResize(attempt + 1), 50);
+          }
+        });
+      };
+
+      tryResize();
+    } else {
+      // Map already has valid size
+      this.map.invalidateSize({ animate: false });
+      performFly();
+    }
   }
 
   getBounds(): {
