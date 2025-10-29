@@ -171,12 +171,10 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
   onSortChange(event: {
     sortBy: 'rating' | 'price' | 'reviewScore';
     order: 'asc' | 'desc';
-  }): void {
-    console.log('Sort changed:', event);
-  }
+  }): void {}
 
   onReviewScoreChange(score: number): void {
-    console.log('Review score filter:', score);
+    // console.log('Review score filter:', score);
   }
 
   onSearchChange(query: string): void {
@@ -192,12 +190,6 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
 
     const filters = this.store.selectSignal(selectCurrentLocationFilters)();
     if (!filters) return;
-
-    console.log('🗺️ Map moved event received:', {
-      zoom: event.zoom,
-      bounds: event.bounds,
-      center: event.center,
-    });
 
     this.store.dispatch(
       ListingsActions.loadListings({
@@ -263,9 +255,9 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
       targetZoom = currentZoom + 2; // just zoom in more
       nextTier = 'CITY';
     }
-
+    console.log('clicked .');
     // Fly to cluster
-    this.mapComponent.flyTo(cluster.lat, cluster.lng, targetZoom);
+    this.mapComponent.flyToCluster(cluster.lat, cluster.lng, targetZoom);
 
     // Wait for animation to complete
     setTimeout(() => {
@@ -324,10 +316,10 @@ export class ListingsMapComponent implements OnInit, OnDestroy {
           // Small delay on mobile to ensure map is ready
           if (this.isMobile()) {
             setTimeout(() => {
-              this.mapComponent?.flyTo(lat, lng, 16);
+              this.mapComponent?.flyToMarker(lat, lng, 16);
             }, 50);
           } else {
-            this.mapComponent.flyTo(lat, lng, 16);
+            this.mapComponent.flyToMarker(lat, lng, 16);
           }
         }
       }

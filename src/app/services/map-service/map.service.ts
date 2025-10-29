@@ -83,58 +83,34 @@ export class MapService {
    * Creates a modern cluster icon - size-based, no text
    * Size indicates density of listings
    */
-  createClusterIcon(
-    L: any,
-    count: number,
-    isBackendCluster: boolean = false
-  ): any {
-    const size = this.getClusterSize(count);
-    const iconSize = size * 0.4; // Icon scales with cluster size
+  createClusterIcon(L: any, count: number): any {
+    const size = this.getClusterSize(count); // logarithmic size
+    const iconSize = size * 0.4; // Icon scales with cluster icon
 
     const bgColor = '#2196F3';
     const borderColor = '#FFFFFF';
     const shadowColor = 'rgba(0, 0, 0, 0.35)';
 
-    // Use a generic restaurant icon for clusters
     const iconSvg = this.getClusterIconSvg(iconSize);
 
     const html = `
-      <div style="
-        width: ${size}px;
-        height: ${size}px;
-        background: ${bgColor};
-        border: 4px solid ${borderColor};
-        border-radius: 50%;
-        box-shadow: 0 4px 12px ${shadowColor};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-        cursor: pointer;
-        position: relative;
-      ">
-        ${iconSvg}
-        ${
-          isBackendCluster
-            ? `
-          <div style="
-            position: absolute;
-            bottom: -8px;
-            right: -8px;
-            background: #FF6B35;
-            color: white;
-            font-size: 10px;
-            font-weight: bold;
-            padding: 2px 6px;
-            border-radius: 10px;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          ">${this.formatCount(count)}</div>
-        `
-            : ''
-        }
-      </div>
-    `;
+    <div style="
+      width: ${size}px;
+      height: ${size}px;
+      background: ${bgColor};
+      border: 4px solid ${borderColor};
+      border-radius: 50%;
+      box-shadow: 0 4px 12px ${shadowColor};
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      position: relative;
+    ">
+      ${iconSvg}
+    </div>
+  `;
 
     return L.divIcon({
       html,
@@ -149,10 +125,10 @@ export class MapService {
    * Small visual differences create elegant density indication
    */
   private getClusterSize(count: number): number {
-    if (count <= 10) return 40;
-    if (count <= 50) return 50;
-    if (count <= 100) return 60;
-    return 70;
+    const minSize = 40; // minimum cluster diameter
+    const maxSize = 80; // maximum cluster diameter
+    const scaled = Math.log10(count + 1) * 20; // logarithmic growth
+    return Math.min(Math.max(minSize, scaled), maxSize);
   }
 
   /**

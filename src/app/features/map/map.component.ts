@@ -14,10 +14,11 @@ import {
   AfterViewInit,
   inject,
   PLATFORM_ID,
+  NgZone, // ✅ REFACTOR: Import NgZone
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Subject } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { debounceTime, takeUntil } from 'rxjs/operators'; // ✅ REFACTOR: Import takeUntil
 import { MapService } from '../../services/map-service/map.service';
 import { MarkerData, MapMoveEvent } from '../../models/map.model';
 import { ClusterMarker } from '../../services/listing-service/listing.service';
@@ -41,25 +42,21 @@ import { ClusterMarker } from '../../services/listing-service/listing.service';
         border-radius: 8px;
         overflow: hidden;
       }
-
       /* Modern marker hover effects */
       :host ::ng-deep .modern-marker:hover > div > div:first-child,
       :host ::ng-deep .modern-cluster:hover > div {
         transform: scale(1.1);
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
       }
-
       /* Custom popup styling */
       :host ::ng-deep .leaflet-popup-content-wrapper {
         border-radius: 12px;
         padding: 0;
         overflow: hidden;
       }
-
       :host ::ng-deep .leaflet-popup-content {
         margin: 0;
       }
-
       :host ::ng-deep .leaflet-popup-tip {
         border-radius: 2px;
       }
@@ -86,11 +83,15 @@ export class MapComponent
 
   private mapService = inject(MapService);
   private platformId = inject(PLATFORM_ID);
+  private ngZone = inject(NgZone); // ✅ REFACTOR: Inject NgZone
 
   private map?: any;
-  private markersLayer?: any;
+  private individualMarkersLayer?: any;
+  private backendClustersLayer?: any;
+
   private markerInstances = new Map<number, any>();
   private mapMoveSubject = new Subject<void>();
+  private destroy$ = new Subject<void>(); // ✅ REFACTOR: For automatic unsubscription
   private resizeObserver?: ResizeObserver;
   private isInitialLoad = true;
   private isProgrammaticMove = false;
@@ -98,85 +99,120 @@ export class MapComponent
   private lastSetCenter?: { lat: number; lng: number };
 
   ngOnInit(): void {
-    this.mapMoveSubject.pipe(debounceTime(500)).subscribe(() => {
-      if (!this.isProgrammaticMove && !this.isInitialLoad) {
-        this.emitMapMoveEvent();
-      }
-    });
+    this.mapMoveSubject
+      .pipe(
+        debounceTime(500),
+        takeUntil(this.destroy$) // ✅ REFACTOR: Auto-unsubscribe
+      )
+      .subscribe(() => {
+        if (!this.isProgrammaticMove && !this.isInitialLoad) {
+          this.emitMapMoveEvent();
+        }
+      });
   }
 
   async ngAfterViewInit(): Promise<void> {
     if (isPlatformBrowser(this.platformId)) {
-      const L = await import('leaflet');
-      await import('leaflet.markercluster');
+      // ✅ REFACTOR: Run all heavy map init outside Angular's zone
+      this.ngZone.runOutsideAngular(async () => {
+        const L = await import('leaflet');
+        await import('leaflet.markercluster');
 
-      this.initMap();
+        this.initMap(); // This will now run outside the zone
 
-      setTimeout(() => {
-        this.map?.invalidateSize();
-        this.isInitialLoad = false;
-      }, 100);
-    }
-    const mapContainer = document.getElementById('your-map-id');
-    if (mapContainer && this.map) {
-      this.resizeObserver = new ResizeObserver(() => {
-        this.map?.invalidateSize({ animate: false });
+        setTimeout(() => {
+          this.map?.invalidateSize();
+          this.isInitialLoad = false;
+        }, 100);
+
+        const mapContainerEl = this.mapContainer.nativeElement;
+        if (mapContainerEl && this.map) {
+          this.resizeObserver = new ResizeObserver(() => {
+            this.map?.invalidateSize({ animate: false });
+          });
+          this.resizeObserver.observe(mapContainerEl);
+        }
       });
-      this.resizeObserver.observe(mapContainer);
     }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['markers'] && !changes['markers'].firstChange) {
-      this.updateMarkers();
-    }
+    if (!this.map) return; // ✅ REFACTOR: Guard against calls before map is ready
 
-    if (changes['clusters'] && !changes['clusters'].firstChange) {
-      this.updateMarkers();
-    }
-
-    if (
-      changes['selectedMarkerId'] &&
-      !changes['selectedMarkerId'].firstChange
-    ) {
-      this.updateSelectedMarker();
-    }
-
-    if (
-      changes['center'] &&
-      !changes['center'].firstChange &&
-      this.map &&
-      changes['center'].currentValue
-    ) {
-      const newCenter = changes['center'].currentValue;
-
-      if (this.hasCenterChangedSignificantly(newCenter)) {
-        this.shouldIgnoreNextMove = true;
-        this.isProgrammaticMove = true;
-
-        this.map.setView([newCenter.lat, newCenter.lng], this.zoom, {
-          animate: false,
-        });
-
-        this.lastSetCenter = { ...newCenter };
-
-        setTimeout(() => {
-          this.isProgrammaticMove = false;
-          this.shouldIgnoreNextMove = false;
-        }, 100);
+    // ✅ REFACTOR: Run all map updates outside the zone
+    this.ngZone.runOutsideAngular(() => {
+      if (
+        (changes['markers'] && !changes['markers'].firstChange) ||
+        (changes['clusters'] && !changes['clusters'].firstChange)
+      ) {
+        this.updateMarkers();
       }
-    }
+
+      if (
+        changes['selectedMarkerId'] &&
+        !changes['selectedMarkerId'].firstChange
+      ) {
+        this.updateSelectedMarker();
+      }
+
+      if (
+        changes['center'] &&
+        !changes['center'].firstChange &&
+        changes['center'].currentValue
+      ) {
+        const newCenter = changes['center'].currentValue;
+
+        if (this.hasCenterChangedSignificantly(newCenter)) {
+          this.shouldIgnoreNextMove = true;
+          this.isProgrammaticMove = true;
+
+          this.map.setView([newCenter.lat, newCenter.lng], this.zoom, {
+            animate: false,
+          });
+
+          this.lastSetCenter = { ...newCenter };
+
+          setTimeout(() => {
+            this.isProgrammaticMove = false;
+            this.shouldIgnoreNextMove = false;
+          }, 100);
+        }
+      }
+    });
   }
 
   ngOnDestroy(): void {
-    this.mapMoveSubject.complete();
-    if (this.map) {
-      this.map.remove();
-    }
+    this.destroy$.next(); // ✅ REFACTOR: Trigger unsubscription
+    this.destroy$.complete(); // ✅ REFACTOR: Complete the subject
+
     this.resizeObserver?.disconnect();
+
+    // ✅ REFACTOR: Full map cleanup
+    if (this.map) {
+      this.ngZone.runOutsideAngular(() => {
+        try {
+          // Explicitly remove listeners
+          this.map.off('moveend');
+          this.map.off('zoomend');
+          // Remove layers
+          if (this.individualMarkersLayer) {
+            this.map.removeLayer(this.individualMarkersLayer);
+          }
+          if (this.backendClustersLayer) {
+            this.map.removeLayer(this.backendClustersLayer);
+          }
+          // Finally, remove the map
+          this.map.remove();
+        } catch (e) {
+          // Suppress errors during destruction
+        }
+        this.map = undefined;
+      });
+    }
   }
 
   private initMap(): void {
+    // This method is called from within runOutsideAngular
     if (!isPlatformBrowser(this.platformId)) return;
     const L = (window as any).L;
     if (!L) return;
@@ -197,7 +233,6 @@ export class MapComponent
       tapHold: this.interactive,
     });
 
-    // Modern, clean map tiles
     L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       {
@@ -207,12 +242,13 @@ export class MapComponent
     ).addTo(this.map);
 
     if (this.interactive) {
+      // These listeners are now set outside Angular's zone
       this.map.on('moveend', () => this.handleMapMoveEnd());
       this.map.on('zoomend', () => this.handleZoomEnd());
     }
 
-    this.initMarkersLayer();
-    this.updateMarkers();
+    this.initLayers(); // This will also run outside the zone
+    this.updateMarkers(); // This will also run outside the zone
   }
 
   private handleMapMoveEnd(): void {
@@ -230,8 +266,6 @@ export class MapComponent
 
   private handleZoomEnd(): void {
     if (this.isInitialLoad) return;
-
-    console.log('🔍 Zoom changed to:', this.map.getZoom());
 
     if (this.shouldIgnoreNextMove) {
       this.shouldIgnoreNextMove = false;
@@ -253,123 +287,142 @@ export class MapComponent
     lng: number;
   }): boolean {
     if (!this.lastSetCenter) return true;
-
     const latDiff = Math.abs(this.lastSetCenter.lat - newCenter.lat);
     const lngDiff = Math.abs(this.lastSetCenter.lng - newCenter.lng);
-
     return latDiff > 0.001 || lngDiff > 0.001;
   }
 
-  private initMarkersLayer(): void {
+  private initLayers(): void {
+    // This method is called from within runOutsideAngular
     if (!isPlatformBrowser(this.platformId)) return;
     const L = (window as any).L;
     if (!L || !this.map) return;
 
-    if (this.markersLayer) {
-      this.map.removeLayer(this.markersLayer);
+    // ✅ REFACTOR: Add error handling for layer removal
+    try {
+      if (this.backendClustersLayer) {
+        this.map.removeLayer(this.backendClustersLayer);
+      }
+    } catch (e) {
+      /* Suppress error */
+    }
+    this.backendClustersLayer = L.layerGroup();
+    this.backendClustersLayer.addTo(this.map);
+
+    try {
+      if (this.individualMarkersLayer) {
+        this.map.removeLayer(this.individualMarkersLayer);
+      }
+    } catch (e) {
+      /* Suppress error */
     }
 
     if (this.enableClustering && this.interactive) {
-      this.markersLayer = L.markerClusterGroup({
+      this.individualMarkersLayer = L.markerClusterGroup({
         maxClusterRadius: 80,
         spiderfyOnMaxZoom: true,
         showCoverageOnHover: false,
-        zoomToBoundsOnClick: false, // 🔑 CRITICAL: Set to false to let flyTo control navigation
+        zoomToBoundsOnClick: false,
         disableClusteringAtZoom: 18,
-        animate: true, // Enable smooth animations
-        animateAddingMarkers: true, // Animate when markers are added
-        spiderfyDistanceMultiplier: 1.5, // More space between spiderfied markers
-        // Use our custom cluster icon
+        animate: true,
+        animateAddingMarkers: true,
+        spiderfyDistanceMultiplier: 1.5,
         iconCreateFunction: (cluster: any) => {
           const count =
             cluster.getAllChildMarkers()?.length || cluster.getChildCount();
-          return this.mapService.createClusterIcon(L, count, false);
+          return this.mapService.createClusterIcon(L, count);
         },
       });
+
+      this.individualMarkersLayer.on('clusterclick', (e: any) => {
+        if (!this.interactive) return;
+        L.DomEvent.stopPropagation(e);
+
+        const cluster = e.layer;
+        const latLng = cluster.getLatLng();
+
+        const syntheticCluster: ClusterMarker = {
+          id: cluster._leaflet_id,
+          lat: latLng.lat,
+          lng: latLng.lng,
+          count: cluster.getChildCount(),
+          name: 'Cluster',
+          type: '',
+        };
+        // ✅ REFACTOR: Emit will re-enter the zone if needed (e.g., via async pipe)
+        this.clusterClicked.emit(syntheticCluster);
+      });
     } else {
-      this.markersLayer = L.layerGroup();
+      this.individualMarkersLayer = L.layerGroup();
     }
 
-    this.markersLayer.addTo(this.map);
+    this.individualMarkersLayer.addTo(this.map);
   }
 
   private updateMarkers(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
-    const L = (window as any).L;
-    if (!L || !this.map || !this.markersLayer) return;
+    // This method is called from within runOutsideAngular
+    if (
+      !isPlatformBrowser(this.platformId) ||
+      !this.map ||
+      !this.individualMarkersLayer ||
+      !this.backendClustersLayer
+    )
+      return;
 
-    this.markersLayer.clearLayers();
+    const L = (window as any).L;
+    if (!L) return;
+
+    // ✅ REFACTOR: Add error handling
+    try {
+      this.individualMarkersLayer.clearLayers();
+      this.backendClustersLayer.clearLayers();
+    } catch (e) {
+      /* Suppress error */
+    }
     this.markerInstances.clear();
 
-    // Render backend clusters if present (STATE/COUNTRY tier)
     if (this.clusters && this.clusters.length > 0) {
       this.renderBackendClusters();
     } else {
-      // Render individual markers (CITY tier or zoomed in)
       this.renderIndividualMarkers();
     }
   }
 
   private renderBackendClusters(): void {
+    // This method is called from within runOutsideAngular
     const L = (window as any).L;
-    if (!L) return;
-
-    console.log(
-      '🎨 Rendering',
-      this.clusters.length,
-      'backend clusters with modern icons'
-    );
+    if (!L || !this.backendClustersLayer) return;
 
     this.clusters.forEach((cluster) => {
-      const icon = this.mapService.createClusterIcon(L, cluster.count, true);
-
+      const icon = this.mapService.createClusterIcon(L, cluster.count);
       const marker = L.marker([cluster.lat, cluster.lng], { icon });
-
-      // Show count in popup on hover
-      const popupContent = this.mapService.createClusterPopupContent(
-        cluster.count,
-        cluster.name
-      );
-
-      marker.bindPopup(popupContent, {
-        maxWidth: 200,
-        className: 'cluster-popup',
-      });
 
       if (this.interactive) {
         marker.on('click', () => {
-          this.clusterClicked.emit(cluster);
+          this.ngZone.run(() => {
+            this.clusterClicked.emit(cluster);
+          });
         });
       }
 
-      this.markersLayer.addLayer(marker);
-      this.markerInstances.set(cluster.id, marker);
+      this.backendClustersLayer.addLayer(marker);
     });
   }
 
   private renderIndividualMarkers(): void {
+    // This method is called from within runOutsideAngular
     const L = (window as any).L;
-    if (!L) return;
-
-    console.log(
-      '🎨 Rendering',
-      this.markers.length,
-      'individual markers with modern icons'
-    );
+    if (!L || !this.individualMarkersLayer) return;
 
     const markersToAdd: any[] = [];
 
     this.markers.forEach((markerData) => {
       const isSelected = markerData.id === this.selectedMarkerId;
-
-      // ✅ Extract a single string from markerData.type (since it's string[])
       const markerType =
         Array.isArray(markerData.type) && markerData.type.length > 0
           ? markerData.type[0]
-          : 'default'; // fallback if array empty or missing
-
+          : 'default';
       const icon = this.mapService.createMarkerIcon(L, markerType, isSelected);
-
       const marker = L.marker([markerData.lat, markerData.lng], { icon });
 
       marker.bindPopup(this.mapService.createPopupContent(markerData), {
@@ -378,17 +431,27 @@ export class MapComponent
       });
 
       if (this.interactive) {
-        marker.on('click', () => this.markerClicked.emit(markerData.id));
+        marker.on('click', () => {
+          this.ngZone.run(() => {
+            this.markerClicked.emit(markerData.id);
+          });
+        });
       }
 
       this.markerInstances.set(markerData.id, marker);
       markersToAdd.push(marker);
     });
 
-    if (this.enableClustering && this.interactive) {
-      this.markersLayer.addLayers(markersToAdd);
-    } else {
-      markersToAdd.forEach((marker) => this.markersLayer.addLayer(marker));
+    try {
+      if (this.enableClustering && this.interactive) {
+        this.individualMarkersLayer.addLayers(markersToAdd);
+      } else {
+        markersToAdd.forEach((marker) =>
+          this.individualMarkersLayer.addLayer(marker)
+        );
+      }
+    } catch (e) {
+      /* Suppress error */
     }
 
     if (
@@ -401,22 +464,20 @@ export class MapComponent
   }
 
   private updateSelectedMarker(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
+    // This method is called from within runOutsideAngular
+    if (!isPlatformBrowser(this.platformId) || !this.map) return;
     const L = (window as any).L;
-    if (!L || !this.map) return;
+    if (!L) return;
 
     this.markerInstances.forEach((marker, id) => {
       const markerData = this.markers.find((m) => m.id === id);
       if (!markerData) return;
 
       const isSelected = id === this.selectedMarkerId;
-
-      // ✅ Safely extract a single string from the array
       const markerType =
         Array.isArray(markerData.type) && markerData.type.length > 0
           ? markerData.type[0]
-          : 'default'; // fallback if array empty
-
+          : 'default';
       const icon = this.mapService.createMarkerIcon(L, markerType, isSelected);
 
       marker.setIcon(icon);
@@ -431,12 +492,6 @@ export class MapComponent
     const bounds = this.mapService.calculateBounds(this.map);
     const zoom = this.map.getZoom();
 
-    console.log('📤 Emitting map move event:', {
-      zoom,
-      bounds,
-      center: { lat: center.lat, lng: center.lng },
-    });
-
     this.mapMoved.emit({
       bounds,
       center: { lat: center.lat, lng: center.lng },
@@ -447,202 +502,193 @@ export class MapComponent
   public forceResize(): void {
     if (!this.map) return;
 
-    console.log('Force resizing map...');
-
-    // Check actual container dimensions
-    const container = this.mapContainer.nativeElement;
-    console.log('Container dimensions:', {
-      offsetWidth: container.offsetWidth,
-      offsetHeight: container.offsetHeight,
-      clientWidth: container.clientWidth,
-      clientHeight: container.clientHeight,
-    });
-
-    // Multiple invalidations with delays
-    this.map.invalidateSize({ animate: false });
-
-    setTimeout(() => {
-      if (!this.map) return;
+    // ✅ REFACTOR: Run outside zone
+    this.ngZone.runOutsideAngular(() => {
       this.map.invalidateSize({ animate: false });
-
-      const size = this.map.getSize();
-      console.log('Map size after force resize:', size);
-    }, 100);
+      setTimeout(() => {
+        this.map?.invalidateSize({ animate: false });
+      }, 100);
+    });
   }
 
-  flyTo(lat: number, lng: number, zoom?: number): void {
-    if (!this.map) {
-      console.error('Map not initialized');
-      return;
-    }
+  flyToMarker(lat: number, lng: number, zoom?: number): void {
+    if (!this.map) return;
 
-    // 🔑 Get your clustering disable zoom level (hardcoded from your config)
     const disableClusterZoom = 18;
-
-    // 🔑 Determine the target zoom
     let targetZoom = zoom !== undefined ? zoom : disableClusterZoom;
 
-    // 🔑 CRITICAL FIX:
-    // If clustering is enabled, the final zoom MUST be at or above
-    // the level where clustering is disabled.
     if (this.enableClustering && targetZoom < disableClusterZoom) {
-      console.warn(
-        `flyTo zoom (${targetZoom}) is below disableClusterZoom (${disableClusterZoom}). Forcing zoom to ${disableClusterZoom} to show marker.`
-      );
       targetZoom = disableClusterZoom;
     }
 
-    console.log('🚀 flyTo called:', { lat, lng, zoom: targetZoom });
+    this.isProgrammaticMove = true;
+    this.shouldIgnoreNextMove = true;
 
-    // ... rest of container checks ...
+    // ✅ REFACTOR: Run animation logic outside zone
+    this.ngZone.runOutsideAngular(() => {
+      this.map.invalidateSize({ animate: false });
+
+      const performFly = () => {
+        if (!this.map) return;
+        const size = this.map.getSize();
+
+        if (size.x === 0 || size.y === 0) {
+          this.map.setView([lat, lng], targetZoom);
+          this.lastSetCenter = { lat, lng };
+
+          setTimeout(() => {
+            this.openPopupAtLocation(lat, lng);
+            this.isProgrammaticMove = false;
+          }, 100);
+          return;
+        }
+
+        this.map.closePopup();
+
+        const currentCenter = this.map.getCenter();
+        const currentZoom = this.map.getZoom();
+        const distance = this.map.distance(currentCenter, [lat, lng]);
+
+        if (distance < 100 && currentZoom === targetZoom) {
+          this.openPopupAtLocation(lat, lng);
+          this.isProgrammaticMove = false;
+          return;
+        }
+
+        let flyCompleted = false;
+        const onFlyComplete = () => {
+          if (flyCompleted) return;
+          flyCompleted = true;
+          this.map?.off('flyend', onFlyComplete);
+          this.map?.off('moveend', onFlyComplete);
+          this.openPopupAtLocation(lat, lng);
+          setTimeout(() => {
+            this.isProgrammaticMove = false;
+          }, 100);
+        };
+
+        this.map.once('flyend', onFlyComplete);
+        this.map.once('moveend', onFlyComplete);
+
+        try {
+          this.map.flyTo([lat, lng], targetZoom, {
+            duration: 1.0,
+          });
+          this.lastSetCenter = { lat, lng };
+        } catch (error) {
+          onFlyComplete(); // Fallback on error
+        }
+      };
+
+      requestAnimationFrame(() => {
+        if (!this.map) return;
+        performFly();
+      });
+    });
+  }
+
+  flyToCluster(lat: number, lng: number, zoom: number): void {
+    if (!this.map) return;
 
     this.isProgrammaticMove = true;
     this.shouldIgnoreNextMove = true;
-    this.map.invalidateSize({ animate: false });
 
-    const performFly = () => {
-      if (!this.map) return;
+    // ✅ REFACTOR: Run animation logic outside zone
+    this.ngZone.runOutsideAngular(() => {
+      const performFly = () => {
+        if (!this.map) return;
 
-      const size = this.map.getSize();
+        let flyCompleted = false;
+        const onFlyComplete = () => {
+          if (flyCompleted) return;
+          flyCompleted = true;
+          this.map?.off('flyend', onFlyComplete);
+          this.map?.off('moveend', onFlyComplete);
+          setTimeout(() => {
+            this.isProgrammaticMove = false;
+          }, 50);
+        };
 
-      // Fallback for invalid size
-      if (size.x === 0 || size.y === 0) {
-        console.warn('⚠️ Invalid map size, using setView');
-        this.map.setView([lat, lng], targetZoom); // ⬅️ Use targetZoom
-        this.lastSetCenter = { lat, lng };
+        this.map.once('flyend', onFlyComplete);
+        this.map.once('moveend', onFlyComplete);
 
-        setTimeout(() => {
-          this.openPopupAtLocation(lat, lng);
-          this.isProgrammaticMove = false; // Reset flag
-        }, 100);
-        return;
-      }
-
-      // Close any open popups
-      this.map.closePopup();
-
-      // Check if we're already at the destination
-      const currentCenter = this.map.getCenter();
-      const currentZoom = this.map.getZoom();
-      const distance = this.map.distance(currentCenter, [lat, lng]);
-
-      if (distance < 100 && currentZoom === targetZoom) {
-        // ⬅️ Use targetZoom
-        console.log('🎯 Already at destination, opening popup immediately');
-        this.openPopupAtLocation(lat, lng);
-        this.isProgrammaticMove = false; // Reset flag
-        return;
-      }
-
-      // 🔑 FIX 2: Simplify completion logic
-      let flyCompleted = false;
-
-      const onFlyComplete = () => {
-        if (flyCompleted) return;
-        flyCompleted = true;
-
-        console.log('✅ Fly complete, opening popup');
-
-        // Clean up listeners
-        this.map?.off('flyend', onFlyComplete);
-        this.map?.off('moveend', onFlyComplete);
-
-        this.openPopupAtLocation(lat, lng);
-
-        // Reset the flag AFTER the popup has been opened
-        setTimeout(() => {
-          this.isProgrammaticMove = false;
-        }, 100);
+        try {
+          this.map.flyTo([lat, lng], zoom, { duration: 1.0 });
+          this.lastSetCenter = { lat, lng };
+        } catch (error) {
+          onFlyComplete(); // Fallback on error
+        }
       };
-
-      // Listen for completion (flyend is ideal, moveend is fallback)
-      this.map.once('flyend', onFlyComplete);
-      this.map.once('moveend', onFlyComplete);
-
-      // Start the fly
-      try {
-        console.log('✈️ Starting flyTo animation');
-        this.map.flyTo([lat, lng], targetZoom, {
-          // ⬅️ Use targetZoom
-          duration: 1.0,
-        });
-        this.lastSetCenter = { lat, lng };
-      } catch (error) {
-        console.error('❌ Error during flyTo:', error);
-        onFlyComplete(); // Ensure cleanup and flag reset on error
-      }
-    };
-
-    requestAnimationFrame(() => {
-      if (!this.map) return;
-      performFly();
+      requestAnimationFrame(() => performFly());
     });
   }
 
   private openPopupAtLocation(lat: number, lng: number): void {
-    if (!this.map) {
-      console.warn('⚠️ Map not available for popup');
-      return;
-    }
+    if (!this.map) return;
 
-    console.log('🔍 Looking for marker at:', { lat, lng });
-    console.log('📍 Total markers:', this.markers.length);
-    console.log('🗂️ Marker instances:', this.markerInstances.size);
+    // ✅ REFACTOR: Run popup logic outside zone
+    this.ngZone.runOutsideAngular(() => {
+      const markerData = this.markers.find((m) => {
+        if (!m) return false;
+        const latMatch = Math.abs(m.lat - lat) < 0.0001;
+        const lngMatch = Math.abs(m.lng - lng) < 0.0001;
+        return latMatch && lngMatch;
+      });
 
-    // Find the marker data with lenient matching
-    const markerData = this.markers.find((m) => {
-      if (!m) return false;
-      const latMatch = Math.abs(m.lat - lat) < 0.0001;
-      const lngMatch = Math.abs(m.lng - lng) < 0.0001;
-      return latMatch && lngMatch;
-    });
+      if (!markerData || !this.markerInstances.has(markerData.id)) {
+        return;
+      }
 
-    if (!markerData) {
-      console.error('❌ No marker data found at:', { lat, lng });
-      return;
-    }
+      const markerInstance = this.markerInstances.get(markerData.id);
+      if (!markerInstance) return;
 
-    if (!this.markerInstances.has(markerData.id)) {
-      console.error('❌ Marker instance not found for ID:', markerData.id);
-      return;
-    }
+      if (
+        this.enableClustering &&
+        this.individualMarkersLayer &&
+        typeof this.individualMarkersLayer.zoomToShowLayer === 'function'
+      ) {
+        try {
+          const visibleLayer =
+            this.individualMarkersLayer.getVisibleParent(markerInstance);
 
-    const markerInstance = this.markerInstances.get(markerData.id);
-
-    if (
-      this.enableClustering &&
-      this.markersLayer &&
-      typeof this.markersLayer.getVisibleParent === 'function'
-    ) {
-      const visibleLayer = this.markersLayer.getVisibleParent(markerInstance);
-
-      if (visibleLayer === markerInstance) {
-        // ✅ Correct path: Marker is visible as expected.
-        console.log('✅ Marker visible, opening popup');
-        markerInstance.openPopup();
-      } else {
-        // ⚠️ Fallback path: Marker is still clustered for some reason.
-        console.warn(
-          '🔄 Marker still hidden, forcing expansion (this is unexpected)'
-        );
-        this.markersLayer.zoomToShowLayer(markerInstance, () => {
-          requestAnimationFrame(() => {
+          if (visibleLayer === markerInstance) {
+            markerInstance.openPopup();
+          } else {
+            this.individualMarkersLayer.zoomToShowLayer(markerInstance, () => {
+              requestAnimationFrame(() => {
+                if (
+                  markerInstance &&
+                  typeof markerInstance.openPopup === 'function'
+                ) {
+                  markerInstance.openPopup();
+                  if (this.map && markerInstance.getPopup()) {
+                    const popupLatLng = markerInstance.getLatLng();
+                    this.map.panTo(popupLatLng, {
+                      animate: true,
+                      duration: 0.2,
+                    });
+                  }
+                }
+              });
+            });
+          }
+        } catch (error) {
+          // Fallback on cluster error
+          setTimeout(() => {
             if (
               markerInstance &&
               typeof markerInstance.openPopup === 'function'
             ) {
               markerInstance.openPopup();
             }
-          });
-        });
+          }, 500);
+        }
+      } else {
+        if (markerInstance && typeof markerInstance.openPopup === 'function') {
+          markerInstance.openPopup();
+        }
       }
-    } else {
-      // Non-clustered path
-      console.log('📍 No clustering, opening popup directly');
-      if (markerInstance && typeof markerInstance.openPopup === 'function') {
-        markerInstance.openPopup();
-      }
-    }
+    });
   }
 
   getBounds(): {
@@ -656,16 +702,12 @@ export class MapComponent
     const bounds = this.map.getBounds();
     if (!bounds) return null;
 
-    const result = {
+    return {
       north: bounds.getNorth(),
       south: bounds.getSouth(),
       east: bounds.getEast(),
       west: bounds.getWest(),
     };
-
-    console.log('📦 Current map bounds:', result);
-
-    return result;
   }
 
   getCurrentZoom(): number {
