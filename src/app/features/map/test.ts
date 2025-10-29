@@ -274,11 +274,8 @@ export class MapComponent
         maxClusterRadius: 80,
         spiderfyOnMaxZoom: true,
         showCoverageOnHover: false,
-        zoomToBoundsOnClick: false, // 🔑 CRITICAL: Set to false to let flyTo control navigation
+        zoomToBoundsOnClick: true,
         disableClusteringAtZoom: 18,
-        animate: true, // Enable smooth animations
-        animateAddingMarkers: true, // Animate when markers are added
-        spiderfyDistanceMultiplier: 1.5, // More space between spiderfied markers
         // Use our custom cluster icon
         iconCreateFunction: (cluster: any) => {
           const count =
@@ -470,31 +467,32 @@ export class MapComponent
     }, 100);
   }
 
-  flyTo(lat: number, lng: number, zoom?: number): void {
+  flyTo(lat: number, lng: number, zoom: number = 16): void {
     if (!this.map) {
       console.error('Map not initialized');
       return;
     }
 
-    // 🔑 Get your clustering disable zoom level (hardcoded from your config)
-    const disableClusterZoom = 18;
+    console.log('🚀 flyTo called:', { lat, lng, zoom });
 
-    // 🔑 Determine the target zoom
-    let targetZoom = zoom !== undefined ? zoom : disableClusterZoom;
+    // Check container dimensions
+    const container = this.mapContainer.nativeElement;
+    const containerHeight = container.offsetHeight || container.clientHeight;
+    const containerWidth = container.offsetWidth || container.clientWidth;
 
-    // 🔑 CRITICAL FIX:
-    // If clustering is enabled, the final zoom MUST be at or above
-    // the level where clustering is disabled.
-    if (this.enableClustering && targetZoom < disableClusterZoom) {
-      console.warn(
-        `flyTo zoom (${targetZoom}) is below disableClusterZoom (${disableClusterZoom}). Forcing zoom to ${disableClusterZoom} to show marker.`
-      );
-      targetZoom = disableClusterZoom;
+    if (containerWidth === 0 || containerHeight === 0) {
+      console.error('❌ Container has no dimensions, waiting...');
+      setTimeout(() => {
+        if (!this.map) return;
+        this.map.invalidateSize({ animate: false });
+
+        const newHeight = this.mapContainer.nativeElement.offsetHeight;
+        if (newHeight > 0) {
+          this.flyTo(lat, lng, zoom);
+        }
+      }, 200);
+      return;
     }
-
-    console.log('🚀 flyTo called:', { lat, lng, zoom: targetZoom });
-
-    // ... rest of container checks ...
 
     this.isProgrammaticMove = true;
     this.shouldIgnoreNextMove = true;
@@ -505,71 +503,73 @@ export class MapComponent
 
       const size = this.map.getSize();
 
-      // Fallback for invalid size
       if (size.x === 0 || size.y === 0) {
         console.warn('⚠️ Invalid map size, using setView');
-        this.map.setView([lat, lng], targetZoom); // ⬅️ Use targetZoom
+        this.map.setView([lat, lng], zoom);
         this.lastSetCenter = { lat, lng };
 
         setTimeout(() => {
           this.openPopupAtLocation(lat, lng);
-          this.isProgrammaticMove = false; // Reset flag
-        }, 100);
-        return;
-      }
-
-      // Close any open popups
-      this.map.closePopup();
-
-      // Check if we're already at the destination
-      const currentCenter = this.map.getCenter();
-      const currentZoom = this.map.getZoom();
-      const distance = this.map.distance(currentCenter, [lat, lng]);
-
-      if (distance < 100 && currentZoom === targetZoom) {
-        // ⬅️ Use targetZoom
-        console.log('🎯 Already at destination, opening popup immediately');
-        this.openPopupAtLocation(lat, lng);
-        this.isProgrammaticMove = false; // Reset flag
-        return;
-      }
-
-      // 🔑 FIX 2: Simplify completion logic
-      let flyCompleted = false;
-
-      const onFlyComplete = () => {
-        if (flyCompleted) return;
-        flyCompleted = true;
-
-        console.log('✅ Fly complete, opening popup');
-
-        // Clean up listeners
-        this.map?.off('flyend', onFlyComplete);
-        this.map?.off('moveend', onFlyComplete);
-
-        this.openPopupAtLocation(lat, lng);
-
-        // Reset the flag AFTER the popup has been opened
-        setTimeout(() => {
           this.isProgrammaticMove = false;
         }, 100);
+        return;
+      }
+
+      // Close any open popups before flying
+      this.map.closePopup();
+
+      const onFlyEnd = () => {
+        console.log('✈️ flyend event fired');
+        this.map?.off('flyend', onFlyEnd);
+        this.map?.off('zoomend', onZoomEnd);
+
+        // Small delay to let clusters settle, then open popup immediately
+        setTimeout(() => {
+          this.openPopupAtLocation(lat, lng);
+          setTimeout(() => {
+            this.isProgrammaticMove = false;
+          }, 100);
+        }, 50); // Reduced from 100-1000ms to just 50ms
       };
 
-      // Listen for completion (flyend is ideal, moveend is fallback)
-      this.map.once('flyend', onFlyComplete);
-      this.map.once('moveend', onFlyComplete);
+      const onZoomEnd = () => {
+        console.log('🔍 zoomend event fired');
+        // Don't remove listeners yet, wait for flyend
+      };
+
+      // Listen for both zoom and fly completion
+      this.map.once('flyend', onFlyEnd);
+      this.map.on('zoomend', onZoomEnd);
+
+      // Timeout fallback - reduced to 1.5 seconds
+      const timeoutId = setTimeout(() => {
+        console.warn('⚠️ Fly timeout, forcing popup open');
+        this.map?.off('flyend', onFlyEnd);
+        this.map?.off('zoomend', onZoomEnd);
+        this.openPopupAtLocation(lat, lng);
+        this.isProgrammaticMove = false;
+      }, 1500);
 
       // Start the fly
       try {
         console.log('✈️ Starting flyTo animation');
-        this.map.flyTo([lat, lng], targetZoom, {
-          // ⬅️ Use targetZoom
-          duration: 1.0,
+        this.map.flyTo([lat, lng], zoom, {
+          duration: 1.2,
         });
+
         this.lastSetCenter = { lat, lng };
+
+        this.map.once('flyend', () => {
+          clearTimeout(timeoutId);
+        });
       } catch (error) {
         console.error('❌ Error during flyTo:', error);
-        onFlyComplete(); // Ensure cleanup and flag reset on error
+        clearTimeout(timeoutId);
+        this.map?.off('flyend', onFlyEnd);
+        this.map?.off('zoomend', onZoomEnd);
+        this.map.setView([lat, lng], zoom);
+        this.lastSetCenter = { lat, lng };
+        this.isProgrammaticMove = false;
       }
     };
 
@@ -589,18 +589,31 @@ export class MapComponent
     console.log('📍 Total markers:', this.markers.length);
     console.log('🗂️ Marker instances:', this.markerInstances.size);
 
-    // Find the marker data with lenient matching
+    // Find the marker data
     const markerData = this.markers.find((m) => {
       if (!m) return false;
-      const latMatch = Math.abs(m.lat - lat) < 0.0001;
-      const lngMatch = Math.abs(m.lng - lng) < 0.0001;
+      const latMatch = Math.abs(m.lat - lat) < 0.00001; // More precise matching
+      const lngMatch = Math.abs(m.lng - lng) < 0.00001;
       return latMatch && lngMatch;
     });
 
     if (!markerData) {
       console.error('❌ No marker data found at:', { lat, lng });
+      console.log(
+        'Available markers:',
+        this.markers.map((m) => ({
+          id: m.id,
+          lat: m.lat,
+          lng: m.lng,
+          distance: Math.sqrt(
+            Math.pow(m.lat - lat, 2) + Math.pow(m.lng - lng, 2)
+          ),
+        }))
+      );
       return;
     }
+
+    console.log('✅ Found marker data:', markerData.id);
 
     if (!this.markerInstances.has(markerData.id)) {
       console.error('❌ Marker instance not found for ID:', markerData.id);
@@ -608,43 +621,81 @@ export class MapComponent
     }
 
     const markerInstance = this.markerInstances.get(markerData.id);
+    console.log('✅ Got marker instance');
 
+    // Handle clustering - THIS IS THE KEY FIX
     if (
       this.enableClustering &&
       this.markersLayer &&
-      typeof this.markersLayer.getVisibleParent === 'function'
+      typeof this.markersLayer.zoomToShowLayer === 'function'
     ) {
-      const visibleLayer = this.markersLayer.getVisibleParent(markerInstance);
+      console.log('🗂️ Marker is in cluster, using zoomToShowLayer...');
 
-      if (visibleLayer === markerInstance) {
-        // ✅ Correct path: Marker is visible as expected.
-        console.log('✅ Marker visible, opening popup');
-        markerInstance.openPopup();
-      } else {
-        // ⚠️ Fallback path: Marker is still clustered for some reason.
-        console.warn(
-          '🔄 Marker still hidden, forcing expansion (this is unexpected)'
-        );
-        this.markersLayer.zoomToShowLayer(markerInstance, () => {
-          requestAnimationFrame(() => {
-            if (
-              markerInstance &&
-              typeof markerInstance.openPopup === 'function'
-            ) {
-              markerInstance.openPopup();
-            }
+      try {
+        // First, check if marker is already visible (not in a collapsed cluster)
+        const visibleLayer = this.markersLayer.getVisibleParent(markerInstance);
+
+        if (visibleLayer === markerInstance) {
+          // Marker is already visible, open popup directly
+          console.log('✅ Marker already visible, opening popup');
+          markerInstance.openPopup();
+        } else {
+          // Marker is inside a cluster, need to expand it
+          console.log('🔄 Marker hidden in cluster, expanding...');
+
+          this.markersLayer.zoomToShowLayer(markerInstance, () => {
+            console.log('✅ Cluster expanded via zoomToShowLayer');
+
+            // Minimal delay - just one frame
+            requestAnimationFrame(() => {
+              if (
+                markerInstance &&
+                typeof markerInstance.openPopup === 'function'
+              ) {
+                markerInstance.openPopup();
+                console.log('✅ Popup opened after cluster expansion');
+
+                // Ensure popup is in view with faster pan
+                if (this.map && markerInstance.getPopup()) {
+                  const popupLatLng = markerInstance.getLatLng();
+                  this.map.panTo(popupLatLng, { animate: true, duration: 0.2 });
+                }
+              } else {
+                console.error('❌ Marker lost after expansion');
+              }
+            });
           });
-        });
+        }
+      } catch (error) {
+        console.error('❌ Error in cluster handling:', error);
+
+        // Fallback: Force spiderfy at this location
+        if (this.markersLayer.unspiderfy) {
+          this.markersLayer.unspiderfy();
+        }
+
+        // Try opening popup directly as last resort
+        setTimeout(() => {
+          if (
+            markerInstance &&
+            typeof markerInstance.openPopup === 'function'
+          ) {
+            markerInstance.openPopup();
+          }
+        }, 300);
       }
     } else {
-      // Non-clustered path
+      // No clustering, open popup directly
       console.log('📍 No clustering, opening popup directly');
+
       if (markerInstance && typeof markerInstance.openPopup === 'function') {
         markerInstance.openPopup();
+        console.log('✅ Popup opened');
+      } else {
+        console.error('❌ Cannot open popup - method not available');
       }
     }
   }
-
   getBounds(): {
     north: number;
     south: number;
